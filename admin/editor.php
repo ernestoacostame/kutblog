@@ -236,7 +236,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
               <div id="image-bubble-menu" class="writing-bubble-menu image-align-toolbar" style="display:none;" role="toolbar" aria-label="Alineación y tamaño de imagen">
                 <!-- Alignment -->
                 <button type="button" class="bubble-btn" data-align="left" title="Alinear a la izquierda (flotar con texto)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="8" height="8" rx="1"></rect>
                     <line x1="14" y1="5" x2="21" y2="5"></line>
                     <line x1="14" y1="9" x2="21" y2="9"></line>
@@ -245,14 +245,14 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                   </svg>
                 </button>
                 <button type="button" class="bubble-btn" data-align="center" title="Centrar">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="4" x2="21" y2="4"></line>
                     <rect x="7" y="8" width="10" height="8" rx="1"></rect>
                     <line x1="3" y1="20" x2="21" y2="20"></line>
                   </svg>
                 </button>
                 <button type="button" class="bubble-btn" data-align="right" title="Alinear a la derecha (flotar con texto)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="13" y="4" width="8" height="8" rx="1"></rect>
                     <line x1="3" y1="5" x2="10" y2="5"></line>
                     <line x1="3" y1="9" x2="10" y2="9"></line>
@@ -261,44 +261,41 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                   </svg>
                 </button>
                 <button type="button" class="bubble-btn" data-align="full" title="Ancho completo">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="6" width="18" height="12" rx="1"></rect>
-                    <polyline points="1 12 3 10 3 14"></polyline>
-                    <polyline points="23 12 21 10 21 14"></polyline>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="4" x2="21" y2="4"></line>
+                    <rect x="3" y="7" width="18" height="10" rx="1"></rect>
+                    <line x1="3" y1="20" x2="21" y2="20"></line>
                   </svg>
                 </button>
 
                 <div class="bubble-sep"></div>
 
                 <!-- Size Presets -->
-                <button type="button" class="bubble-btn" data-size="25%" title="Tamaño: 25%">
-                  <span style="font-size:0.75rem;font-weight:600;">25%</span>
-                </button>
-                <button type="button" class="bubble-btn" data-size="50%" title="Tamaño: 50%">
-                  <span style="font-size:0.75rem;font-weight:600;">50%</span>
-                </button>
-                <button type="button" class="bubble-btn" data-size="75%" title="Tamaño: 75%">
-                  <span style="font-size:0.75rem;font-weight:600;">75%</span>
-                </button>
-                <button type="button" class="bubble-btn" data-size="100%" title="Tamaño: 100% (Original)">
-                  <span style="font-size:0.75rem;font-weight:600;">100%</span>
-                </button>
-                <button type="button" class="bubble-btn" id="img-btn-custom-size" title="Personalizar tamaño (px o %)" style="font-size:0.78rem;">
-                  📐
+                <button type="button" class="bubble-btn img-size-btn" data-size="25%" title="Tamaño: 25%">25%</button>
+                <button type="button" class="bubble-btn img-size-btn" data-size="50%" title="Tamaño: 50%">50%</button>
+                <button type="button" class="bubble-btn img-size-btn" data-size="75%" title="Tamaño: 75%">75%</button>
+                <button type="button" class="bubble-btn img-size-btn" data-size="100%" title="Tamaño: 100% (Original)">100%</button>
+                <button type="button" class="bubble-btn" id="img-btn-custom-size" title="Personalizar tamaño (px o %)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                  </svg>
                 </button>
 
                 <div class="bubble-sep"></div>
 
                 <!-- Edit Alt Text -->
-                <button type="button" class="bubble-btn" id="img-btn-alt" title="Editar texto alternativo (alt)" style="font-size:0.75rem;font-weight:700;padding:0 6px;">
+                <button type="button" class="bubble-btn bubble-btn-alt" id="img-btn-alt" title="Editar texto alternativo (alt)">
                   ALT
                 </button>
 
                 <div class="bubble-sep"></div>
 
                 <!-- Delete Image -->
-                <button type="button" class="bubble-btn bubble-btn-danger" id="img-btn-delete" title="Eliminar imagen" style="color:#f43f5e;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <button type="button" class="bubble-btn bubble-btn-danger" id="img-btn-delete" title="Eliminar imagen">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -811,6 +808,107 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
   background: #5e721d;
   color: #f4f7e2;
+}
+
+/* ── Writing Desk: Floating Image Alignment & Size Menu ────── */
+.image-align-toolbar {
+  background: var(--surface) !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4) !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px 6px !important;
+  gap: 3px !important;
+  user-select: none !important;
+  width: auto !important;
+  max-width: calc(100vw - 20px) !important;
+}
+.image-align-toolbar .bubble-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+.image-align-toolbar .bubble-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.image-align-toolbar .bubble-btn.active {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+.image-align-toolbar .bubble-btn.active svg {
+  stroke: #fff !important;
+}
+.image-align-toolbar .img-size-btn {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  min-width: 38px !important;
+  height: 26px !important;
+  padding: 0 6px !important;
+  border-radius: 5px !important;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+body.scheme-light .image-align-toolbar .img-size-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.image-align-toolbar .img-size-btn:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+.image-align-toolbar .img-size-btn.active {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+.image-align-toolbar .bubble-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border2);
+  margin: 0 5px;
+  flex-shrink: 0;
+}
+.image-align-toolbar .bubble-btn-alt {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  min-width: 36px !important;
+  height: 26px !important;
+  border-radius: 5px !important;
+  padding: 0 7px !important;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+body.scheme-light .image-align-toolbar .bubble-btn-alt {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.image-align-toolbar .bubble-btn-alt:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+.image-align-toolbar .bubble-btn-danger {
+  color: #f43f5e !important;
+}
+.image-align-toolbar .bubble-btn-danger:hover {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: #f43f5e !important;
 }
 
 /* ── Writing Desk: Slash Command Palette ─────────────────────── */
