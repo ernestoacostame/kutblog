@@ -879,9 +879,16 @@ body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
 }
 
 /* ── Writing Desk: Floating Image Alignment & Size Menu ────── */
+#image-bubble-menu:not(.is-active) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 #image-bubble-menu.image-align-toolbar {
   position: fixed !important;
-  display: inline-flex !important;
+  display: none !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
@@ -905,6 +912,14 @@ body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
   user-select: none !important;
   box-sizing: border-box !important;
 }
+
+#image-bubble-menu.image-align-toolbar.is-active {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 body.scheme-light #image-bubble-menu.image-align-toolbar {
   background: rgba(255, 255, 255, 0.96) !important;
   border-color: rgba(0, 0, 0, 0.12) !important;
@@ -3379,8 +3394,19 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   const slashMenu = document.getElementById('slash-menu');
 
   function hideImageBubble() {
-    if (imageBubbleMenu) imageBubbleMenu.style.display = 'none';
+    if (imageBubbleMenu) {
+      imageBubbleMenu.classList.remove('is-active');
+      imageBubbleMenu.style.setProperty('display', 'none', 'important');
+    }
   }
+  function showImageBubble() {
+    if (imageBubbleMenu) {
+      imageBubbleMenu.classList.add('is-active');
+      imageBubbleMenu.style.setProperty('display', 'inline-flex', 'important');
+    }
+  }
+  window.hideImageBubble = hideImageBubble;
+  window.showImageBubble = showImageBubble;
   const findBar = document.getElementById('find-replace-bar');
   const deskMetrics = document.getElementById('desk-metrics');
   const publishBtn = document.getElementById('publish-btn');
@@ -3613,6 +3639,11 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       onSelectionUpdate({ editor }) {
         updateBubblePosition(editor);
       },
+      onTransaction({ editor }) {
+        if (!editor.isActive('image')) {
+          hideImageBubble();
+        }
+      },
       onBlur({ editor }) {
         setTimeout(() => {
           if (!editor.isFocused) {
@@ -3699,7 +3730,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         const nodeDom = (typeof view.nodeDOM === 'function' ? view.nodeDOM(from) : null) || view.dom.querySelector('.ProseMirror-selectednode') || view.dom.querySelector('img.align-left, img.align-right, img.align-center, img.align-full, img[src]');
         const imgRect = (nodeDom && typeof nodeDom.getBoundingClientRect === 'function') ? nodeDom.getBoundingClientRect() : null;
 
-        imageBubbleMenu.style.display = 'inline-flex';
+        showImageBubble();
         const menuRect = imageBubbleMenu.getBoundingClientRect();
 
         let left, top;
@@ -5383,7 +5414,15 @@ const siteBase     = <?= json_encode(base_url()) ?>;
 previewBtn?.addEventListener('click', openPreview);
 
 function openPreview() {
-  document.getElementById('image-bubble-menu')?.style.setProperty('display', 'none');
+  if (typeof window.hideImageBubble === 'function') {
+    window.hideImageBubble();
+  } else {
+    const ibm = document.getElementById('image-bubble-menu');
+    if (ibm) {
+      ibm.classList.remove('is-active');
+      ibm.style.setProperty('display', 'none', 'important');
+    }
+  }
   const adminBase = siteBase + '/admin';
   
   // Get current content
