@@ -23,7 +23,11 @@ $per_page = (int)($config['posts_per_page'] ?? 5);
 $type = $segments[0] ?? '';
 $slug = $segments[1] ?? ($segments[0] ?? '');
 
-// ── Sitemap & robots ─────────────────────────────────────────────────────
+// ── Sitemap, robots & favicon ──────────────────────────────────────────────
+if ($path === 'favicon.ico' || $path === 'favicon.svg') {
+    header('Location: ' . site_favicon(), true, 302);
+    exit;
+}
 if ($path === 'sitemap.xml') {
     require __DIR__ . '/sitemap.xml.php';
     exit;

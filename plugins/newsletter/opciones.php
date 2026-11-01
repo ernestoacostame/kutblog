@@ -6,3 +6,4 @@ if (!defined('CMS_NAME') && !defined('ROOT_PATH')) {
 
 header('Location: ' . base_url() . '/admin/newsletter.php');
 exit;
+

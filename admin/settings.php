@@ -57,6 +57,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // Handle favicon upload or removal
+            if (!empty($_POST['remove_favicon']) && $_POST['remove_favicon'] === '1') {
+                cms_remove_favicon();
+                $config['site_favicon'] = '';
+            } elseif (!empty($_FILES['site_favicon_file']['tmp_name'])) {
+                $upFav = cms_save_favicon($_FILES['site_favicon_file']);
+                if ($upFav) {
+                    $config['site_favicon'] = $upFav;
+                } else {
+                    $errFav = 'Formato de favicon no permitido (se admiten ICO, PNG, SVG o WebP, máx. 5 MB).';
+                    $error = $error ? ($error . ' ' . $errFav) : $errFav;
+                }
+            }
+
             cms_save_config($config);
             if (!$error) {
                 $msg = 'Apariencia guardada correctamente.';
@@ -374,6 +388,34 @@ admin_header(__("settings_title"), 'settings');
                             <input type="checkbox" name="remove_logo" value="1">
                             <?= __("btn_remove_logo", "Eliminar logotipo actual") ?>
                           </label>
+                        <?php endif; ?>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Favicon del Sitio -->
+                <div class="form-group" style="margin-bottom:1.5rem">
+                  <label class="form-label" style="font-weight:700"><?= __("field_site_favicon", "Favicon del sitio") ?></label>
+                  <div style="display:flex;align-items:center;gap:1.5rem;padding:1.25rem;background:var(--surface2);border:1px solid var(--border2);border-radius:12px">
+                    <?php 
+                      $currentFav = site_favicon();
+                      $hasCustomFav = !empty($config['site_favicon']);
+                    ?>
+                    <div id="settings-favicon-box" style="width:52px;height:52px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px solid var(--border);padding:6px">
+                      <img src="<?= htmlspecialchars($currentFav) ?>" alt="Favicon" style="max-width:100%;max-height:100%;object-fit:contain">
+                    </div>
+                    <div style="flex:1">
+                      <input type="file" name="site_favicon_file" accept=".ico,.png,.svg,.webp,image/x-icon,image/png,image/svg+xml" class="form-control" onchange="previewSiteFavicon(this, 'settings-favicon-box')">
+                      <div style="display:flex;gap:1.25rem;align-items:center;margin-top:0.45rem;flex-wrap:wrap">
+                        <small style="color:var(--muted);font-size:0.8rem"><?= __("field_site_favicon_hint", "Icono para pestañas del navegador (ICO, PNG o SVG, máx. 5 MB)") ?></small>
+                        <?php if ($hasCustomFav): ?>
+                          <label style="font-size:0.84rem;color:var(--red);display:inline-flex;align-items:center;gap:0.35rem;cursor:pointer;font-weight:600">
+                            <input type="checkbox" name="remove_favicon" value="1">
+                            <?= __("btn_remove_favicon", "Restablecer favicon predeterminado") ?>
+                          </label>
+                        <?php else: ?>
+                          <small style="color:var(--accent);font-size:0.8rem;font-weight:600">(Predeterminado de KutBlog activo)</small>
                         <?php endif; ?>
                       </div>
                     </div>
@@ -822,6 +864,17 @@ function previewSiteLogo(input, targetId) {
     reader.onload = function(e) {
       const box = document.getElementById(targetId);
       box.innerHTML = `<img src="${e.target.result}" alt="Logo" style="max-width:100%;max-height:100%;object-fit:contain">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function previewSiteFavicon(input, targetId) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const box = document.getElementById(targetId);
+      box.innerHTML = `<img src="${e.target.result}" alt="Favicon" style="max-width:100%;max-height:100%;object-fit:contain">`;
     };
     reader.readAsDataURL(input.files[0]);
   }

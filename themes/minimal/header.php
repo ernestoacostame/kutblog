@@ -7,6 +7,7 @@
 <meta name="description" content="<?= isset($post) ? htmlspecialchars(strip_tags($post['excerpt'] ?? substr(strip_tags($post['content'] ?? ''), 0, 160))) : htmlspecialchars($config['tagline'] ?? $site_title) ?>">
 <link rel="alternate" type="application/rss+xml" title="<?= htmlspecialchars($site_title) ?> RSS" href="<?= $base ?>/rss.xml">
 <link rel="canonical" href="<?= $base . '/' . ltrim($_SERVER['REQUEST_URI'] ?? '', '/') ?>">
+<?= cms_favicon_tags() ?>
 
 <?php if (isset($post)): ?>
 <meta property="og:title"       content="<?= htmlspecialchars($post['title'] ?? '') ?>">

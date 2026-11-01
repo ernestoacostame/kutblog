@@ -124,6 +124,127 @@ function cms_remove_logo(): void {
     cms_save_config($config);
 }
 
+function site_favicon(): string {
+    $config = cms_config();
+    $fav = $config['site_favicon'] ?? '';
+    if ($fav) {
+        if (preg_match('#^https?://#i', $fav)) {
+            return $fav;
+        }
+        return rtrim(base_url(), '/') . '/' . ltrim($fav, '/');
+    }
+    return rtrim(base_url(), '/') . '/media/favicon/default.svg';
+}
+
+function site_favicon_mime(string $url = ''): string {
+    $url = $url ?: site_favicon();
+    $path = parse_url($url, PHP_URL_PATH);
+    $ext = strtolower(pathinfo($path ?? '', PATHINFO_EXTENSION));
+    return match ($ext) {
+        'svg'        => 'image/svg+xml',
+        'png'        => 'image/png',
+        'ico'        => 'image/x-icon',
+        'webp'       => 'image/webp',
+        'gif'        => 'image/gif',
+        'jpg','jpeg' => 'image/jpeg',
+        default      => 'image/x-icon',
+    };
+}
+
+function cms_favicon_tags(): string {
+    $url = site_favicon();
+    $mime = site_favicon_mime($url);
+    $escapedUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+    $html = '<link rel="icon" type="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" href="' . $escapedUrl . '">' . "\n";
+    if ($mime === 'image/svg+xml') {
+        $html .= '<link rel="alternate icon" href="' . $escapedUrl . '">' . "\n";
+    }
+    $html .= '<link rel="apple-touch-icon" href="' . $escapedUrl . '">' . "\n";
+    return $html;
+}
+
+function cms_save_favicon(array $file): ?string {
+    if (empty($file['tmp_name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    if ($file['size'] > 5 * 1024 * 1024) {
+        return null;
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime  = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    $allowed = [
+        'image/x-icon'               => 'ico',
+        'image/vnd.microsoft.icon'  => 'ico',
+        'image/png'                  => 'png',
+        'image/svg+xml'              => 'svg',
+        'image/svg'                  => 'svg',
+        'image/webp'                 => 'webp',
+        'image/gif'                  => 'gif',
+        'image/jpeg'                 => 'jpg',
+    ];
+
+    $ext = $allowed[$mime] ?? '';
+    $origExt = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+
+    if (!$ext) {
+        if ($origExt === 'ico') {
+            $ext = 'ico';
+        } elseif ($origExt === 'svg') {
+            $content = @file_get_contents($file['tmp_name']);
+            if ($content && str_contains($content, '<svg') && !str_contains($content, '<?php')) {
+                $ext = 'svg';
+            }
+        }
+    }
+
+    if (!$ext || !in_array($ext, ['ico', 'png', 'svg', 'webp', 'gif', 'jpg'])) {
+        return null;
+    }
+
+    $dir = ROOT_PATH . '/media/favicon';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    $filename = 'favicon_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+    $targetPath = $dir . '/' . $filename;
+
+    $moved = is_uploaded_file($file['tmp_name'])
+        ? move_uploaded_file($file['tmp_name'], $targetPath)
+        : @copy($file['tmp_name'], $targetPath);
+
+    if ($moved) {
+        $config = cms_config();
+        $oldFav = $config['site_favicon'] ?? '';
+        if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_ends_with($oldFav, 'default.svg')) {
+            $oldFile = ROOT_PATH . '/' . $oldFav;
+            if (file_exists($oldFile) && is_file($oldFile) && realpath($oldFile) !== realpath($targetPath)) {
+                @unlink($oldFile);
+            }
+        }
+        return 'media/favicon/' . $filename;
+    }
+
+    return null;
+}
+
+function cms_remove_favicon(): void {
+    $config = cms_config();
+    $oldFav = $config['site_favicon'] ?? '';
+    if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_ends_with($oldFav, 'default.svg')) {
+        $oldFile = ROOT_PATH . '/' . $oldFav;
+        if (file_exists($oldFile) && is_file($oldFile)) {
+            @unlink($oldFile);
+        }
+    }
+    $config['site_favicon'] = '';
+    cms_save_config($config);
+}
+
 function active_theme(): string {
     $config = cms_config();
     return $config['theme'] ?? 'default';

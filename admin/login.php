@@ -61,6 +61,7 @@ $rgb = hexdec(substr($c,1,2)).','.hexdec(substr($c,3,2)).','.hexdec(substr($c,5,
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $step === '2fa' ? 'Verificación 2FA' : 'Iniciar sesión' ?> — <?= htmlspecialchars(site_title()) ?></title>
+<?= cms_favicon_tags() ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
