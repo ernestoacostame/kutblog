@@ -10,7 +10,7 @@ function flux_markdown(string $md): string {
     // Protect inline HTML blocks (pass through unchanged)
     $html_blocks = [];
     $md = preg_replace_callback(
-        '/^(<(?:div|section|article|aside|header|footer|nav|figure|details|summary|table|ul|ol|pre|blockquote|script|style)[^>]*>.*?<\/\2>)\s*$/ims',
+        '/^(<(?P<tag>div|section|article|aside|header|footer|nav|figure|details|summary|table|ul|ol|pre|blockquote|script|style)[^>]*>.*?<\/(?P=tag)>)\s*$/ims',
         function($m) use (&$html_blocks) {
             $key = "\x02HTML" . count($html_blocks) . "\x03";
             $html_blocks[$key] = $m[0];

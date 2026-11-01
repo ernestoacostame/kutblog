@@ -4419,7 +4419,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     try {
       const fd = new FormData();
       fd.append('md', md);
-      const res = await fetch('markdown_preview.php', { method: 'POST', body: fd });
+      const res = await fetch(<?= json_encode(base_url() . '/admin/markdown_preview.php') ?>, { method: 'POST', body: fd });
       if (res.ok) {
         const text = await res.text();
         return text || '<p></p>';
