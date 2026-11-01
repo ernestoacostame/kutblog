@@ -3683,6 +3683,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
             if (!imageBubbleMenu?.contains(activeEl) && !imageBubbleMenu?.matches(':hover')) {
               hideImageBubble();
             }
+            if (!bubbleMenu?.contains(activeEl) && !bubbleMenu?.matches(':hover')) {
+              if (bubbleMenu) bubbleMenu.style.display = 'none';
+            }
           }
         }, 150);
       }
@@ -3699,6 +3702,32 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         e.preventDefault();
         files.forEach(uploadAndInsertPmImage);
       }
+    });
+
+    // Ensure clicking an image in ProseMirror selects the image node and triggers the toolbar
+    pmMount.addEventListener('click', (e) => {
+      const img = e.target.closest('img');
+      if (img && window.pmEditor) {
+        try {
+          const pos = window.pmEditor.view.posAtDOM(img, 0);
+          if (typeof pos === 'number') {
+            window.pmEditor.chain().focus().setNodeSelection(pos).run();
+            updateBubblePosition(window.pmEditor);
+          }
+        } catch (err) {}
+      }
+    });
+
+    pmMount.addEventListener('mouseup', () => {
+      setTimeout(() => {
+        if (window.pmEditor) updateBubblePosition(window.pmEditor);
+      }, 20);
+    });
+
+    pmMount.addEventListener('keyup', () => {
+      setTimeout(() => {
+        if (window.pmEditor) updateBubblePosition(window.pmEditor);
+      }, 20);
     });
 
   } else if (fallbackEditor) {
@@ -3734,8 +3763,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
 
   // 4. FLOATING BUBBLE SELECTION MENU & IMAGE ALIGNMENT MENU
   function updateBubblePosition(editor) {
+    if (!editor || !editor.view) return;
     const isWysiwyg = (window.currentEditorMode === 'wysiwyg' || mode === 'wysiwyg' || mode === 'visual');
-    if (!isWysiwyg || isRawMode) {
+    if (!isWysiwyg) {
       hideImageBubble();
       if (bubbleMenu) bubbleMenu.style.display = 'none';
       return;
@@ -3759,7 +3789,19 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         });
 
         const view = editor.view;
-        const nodeDom = (typeof view.nodeDOM === 'function' ? view.nodeDOM(from) : null) || view.dom.querySelector('.ProseMirror-selectednode') || view.dom.querySelector('img.align-left, img.align-right, img.align-center, img.align-full, img[src]');
+        let nodeDom = null;
+        if (typeof view.nodeDOM === 'function') {
+          const dom = view.nodeDOM(from);
+          if (dom) {
+            nodeDom = (dom.tagName === 'IMG') ? dom : dom.querySelector('img');
+          }
+        }
+        if (!nodeDom) {
+          const selected = view.dom.querySelector('.ProseMirror-selectednode');
+          if (selected) {
+            nodeDom = (selected.tagName === 'IMG') ? selected : selected.querySelector('img');
+          }
+        }
         const imgRect = (nodeDom && typeof nodeDom.getBoundingClientRect === 'function') ? nodeDom.getBoundingClientRect() : null;
 
         showImageBubble();
@@ -3777,6 +3819,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
           const end = view.coordsAtPos(to);
           left = ((start.left + end.left) / 2) - (menuRect.width / 2);
           top = start.top - menuRect.height - 8;
+          if (top < 10) {
+            top = end.bottom + 8;
+          }
         }
 
         imageBubbleMenu.style.position = 'fixed';
@@ -3790,7 +3835,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
 
     if (!bubbleMenu) return;
-    if (empty || !editor.isFocused) {
+    if (empty) {
       bubbleMenu.style.display = 'none';
       return;
     }
@@ -3814,7 +3859,10 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     bubbleMenu.style.display = 'flex';
     const menuRect = bubbleMenu.getBoundingClientRect();
     const left = ((start.left + end.left) / 2) - (menuRect.width / 2);
-    const top = start.top - menuRect.height - 10;
+    let top = start.top - menuRect.height - 10;
+    if (top < 10) {
+      top = end.bottom + 10;
+    }
 
     bubbleMenu.style.position = 'fixed';
     bubbleMenu.style.left = `${Math.max(10, Math.min(window.innerWidth - menuRect.width - 10, left))}px`;
@@ -4128,6 +4176,11 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         hideImageBubble();
       }
     }
+    if (bubbleMenu && bubbleMenu.style.display !== 'none') {
+      if (!bubbleMenu.contains(e.target) && !pmMount?.contains(e.target)) {
+        bubbleMenu.style.display = 'none';
+      }
+    }
   });
 
   window.addEventListener('scroll', () => {
@@ -4136,6 +4189,11 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         updateBubblePosition(window.pmEditor);
       } else {
         hideImageBubble();
+      }
+    }
+    if (bubbleMenu && bubbleMenu.style.display !== 'none') {
+      if (window.pmEditor) {
+        updateBubblePosition(window.pmEditor);
       }
     }
   }, { passive: true });
@@ -4996,8 +5054,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setupToolbarButtons();
   
   // Also set up mode switchers
-  document.getElementById('switch-visual').addEventListener('click', () => switchMode('visual'));
-  document.getElementById('switch-raw').addEventListener('click', () => switchMode('raw'));
+  document.getElementById('switch-visual')?.addEventListener('click', () => switchMode('visual'));
+  document.getElementById('switch-raw')?.addEventListener('click', () => switchMode('raw'));
   
   // Update hidden textarea before form submission for all buttons
   const form = document.getElementById('editor-form');
