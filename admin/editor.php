@@ -1077,10 +1077,17 @@ body.scheme-light #image-bubble-menu .img-tb-sep {
   border-radius: 10px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.35);
   width: 290px;
+  max-width: calc(100vw - 20px);
   max-height: 340px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 5px;
   user-select: none;
+}
+@media (max-width: 640px) {
+  .writing-slash-menu {
+    max-height: 240px;
+  }
 }
 .writing-slash-menu::-webkit-scrollbar { width: 5px; }
 .writing-slash-menu::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -3667,6 +3674,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         if (!editor.isActive('image')) {
           hideImageBubble();
         }
+        if (typeof checkSlashTrigger === 'function') {
+          checkSlashTrigger(editor);
+        }
       },
       onSelectionUpdate({ editor }) {
         updateBubblePosition(editor);
@@ -3674,6 +3684,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       onTransaction({ editor }) {
         if (!editor.isActive('image')) {
           hideImageBubble();
+        }
+        if (typeof checkSlashTrigger === 'function') {
+          checkSlashTrigger(editor);
         }
       },
       onBlur({ editor }) {
@@ -3728,6 +3741,14 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       setTimeout(() => {
         if (window.pmEditor) updateBubblePosition(window.pmEditor);
       }, 20);
+    });
+
+    pmMount.addEventListener('input', () => {
+      setTimeout(() => {
+        if (window.pmEditor && typeof checkSlashTrigger === 'function') {
+          checkSlashTrigger(window.pmEditor);
+        }
+      }, 10);
     });
 
   } else if (fallbackEditor) {
@@ -4022,20 +4043,82 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     if (slashMenu) slashMenu.style.display = 'none';
   }
 
-  function openSlashMenu() {
-    if (!slashMenu) return;
-    if (window.pmEditor) {
-      const { from } = window.pmEditor.state.selection;
-      const coords = window.pmEditor.view.coordsAtPos(from);
-      slashMenu.style.position = 'fixed';
-      slashMenu.style.top = `${coords.bottom + 6}px`;
-      slashMenu.style.left = `${Math.min(window.innerWidth - 300, Math.max(10, coords.left))}px`;
-      slashMenu.style.zIndex = '9999';
-      slashMenu.style.display = 'block';
-      slashActive = true;
-      slashIdx = 0;
-      updateSlashSelection();
+  function checkSlashTrigger(editor) {
+    if (!editor || !slashMenu) return;
+    const isWysiwyg = (window.currentEditorMode === 'wysiwyg' || mode === 'wysiwyg' || mode === 'visual');
+    if (!isWysiwyg) {
+      if (slashActive) closeSlashMenu();
+      return;
     }
+
+    const { $from, empty } = editor.state.selection;
+    if (!empty) {
+      if (slashActive) closeSlashMenu();
+      return;
+    }
+
+    // Clean invisible characters like zero-width spaces (\u200B, \uFEFF) and NBSP (\u00A0)
+    // which iOS Safari / WebKit automatically inserts into empty contenteditable blocks
+    const rawText = $from.parent.textContent || '';
+    const cleanText = rawText.replace(/[\u200B\uFEFF\u00A0\s]/g, '');
+
+    if (cleanText === '/') {
+      openSlashMenu();
+    } else if (slashActive && !rawText.includes('/')) {
+      closeSlashMenu();
+    }
+  }
+  window.checkSlashTrigger = checkSlashTrigger;
+
+  function openSlashMenu() {
+    if (!slashMenu || !window.pmEditor) return;
+    const { from } = window.pmEditor.state.selection;
+    let coords = null;
+    try {
+      coords = window.pmEditor.view.coordsAtPos(from);
+    } catch (err) {}
+
+    slashMenu.style.position = 'fixed';
+    slashMenu.style.zIndex = '9999';
+    slashMenu.style.display = 'block';
+    slashActive = true;
+    slashIdx = 0;
+    updateSlashSelection();
+
+    // Use visualViewport for iOS Safari / virtual keyboard awareness
+    const vv = window.visualViewport;
+    const vpWidth = vv ? vv.width : window.innerWidth;
+    const vpHeight = vv ? vv.height : window.innerHeight;
+    const vpTop = vv ? vv.offsetTop : 0;
+    const vpLeft = vv ? vv.offsetLeft : 0;
+
+    const menuRect = slashMenu.getBoundingClientRect();
+    const menuWidth = Math.min(menuRect.width || 290, vpWidth - 20);
+    const menuHeight = Math.min(menuRect.height || 260, vpHeight - 40);
+
+    let top = 80;
+    let left = 10;
+
+    if (coords && coords.bottom > 0) {
+      left = Math.max(10, Math.min(vpWidth - menuWidth - 10, coords.left));
+
+      // Check if menu fits below the cursor above the virtual keyboard
+      if (coords.bottom + menuHeight + 10 <= vpTop + vpHeight) {
+        top = coords.bottom + 6;
+      } else if (coords.top - menuHeight - 10 >= vpTop) {
+        // Position above the cursor
+        top = coords.top - menuHeight - 6;
+      } else {
+        // Center within available visible viewport
+        top = Math.max(10, vpTop + Math.max(0, Math.floor((vpHeight - menuHeight) / 2)));
+      }
+    } else {
+      left = Math.max(10, Math.floor((vpWidth - menuWidth) / 2));
+      top = Math.max(10, Math.floor((vpHeight - menuHeight) / 2));
+    }
+
+    slashMenu.style.left = `${Math.round(left)}px`;
+    slashMenu.style.top = `${Math.round(top)}px`;
   }
 
   function updateSlashSelection() {
@@ -4052,9 +4135,12 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     if (!window.pmEditor) return;
 
     const { $from } = window.pmEditor.state.selection;
-    const from = $from.pos - 1;
-    const to = $from.pos;
-    const chain = window.pmEditor.chain().focus().deleteRange({ from, to });
+    const from = $from.start();
+    const to = $from.end();
+    const chain = window.pmEditor.chain().focus();
+    if (to > from) {
+      chain.deleteRange({ from, to });
+    }
 
     switch (cmd) {
       case 'h2':
@@ -4120,9 +4206,13 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   }
 
   slashMenu?.querySelectorAll('.slash-item').forEach((item, idx) => {
-    item.addEventListener('click', () => {
+    function handleSelect(e) {
+      e.preventDefault();
+      e.stopPropagation();
       executeSlashCommand(item.getAttribute('data-cmd'));
-    });
+    }
+    item.addEventListener('pointerdown', handleSelect);
+    item.addEventListener('click', handleSelect);
     item.addEventListener('mouseenter', () => {
       slashIdx = idx;
       updateSlashSelection();
@@ -4157,17 +4247,14 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       }
     }
 
-    if (e.key === '/' && !slashActive && window.pmEditor && window.pmEditor.isFocused) {
+    if ((e.key === '/' || e.code === 'Slash') && window.pmEditor) {
       setTimeout(() => {
-        const { $from } = window.pmEditor.state.selection;
-        if ($from.parent.textContent === '/') {
-          openSlashMenu();
-        }
+        checkSlashTrigger(window.pmEditor);
       }, 20);
     }
   });
 
-  document.addEventListener('mousedown', (e) => {
+  const handleOutsidePointer = (e) => {
     if (slashActive && !slashMenu.contains(e.target)) {
       closeSlashMenu();
     }
@@ -4181,7 +4268,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         bubbleMenu.style.display = 'none';
       }
     }
-  });
+  };
+  document.addEventListener('mousedown', handleOutsidePointer);
+  document.addEventListener('pointerdown', handleOutsidePointer);
 
   window.addEventListener('scroll', () => {
     if (imageBubbleMenu && imageBubbleMenu.style.display !== 'none') {
