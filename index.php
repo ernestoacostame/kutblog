@@ -27,9 +27,23 @@ $slug = $segments[1] ?? ($segments[0] ?? '');
 if ($path === 'favicon.ico') {
     $config = cms_config();
     $customFav = $config['site_favicon'] ?? '';
-    if ($customFav && str_ends_with(strtolower($customFav), '.ico')) {
-        header('Location: ' . site_favicon(), true, 302);
-        exit;
+    if ($customFav) {
+        $customIco = preg_replace('/\.[a-z0-9]+$/i', '.ico', $customFav);
+        $customIcoPath = __DIR__ . '/' . ltrim($customIco, '/');
+        if (file_exists($customIcoPath) && filesize($customIcoPath) > 0) {
+            header('Content-Type: image/x-icon');
+            header('Cache-Control: public, max-age=86400');
+            readfile($customIcoPath);
+            exit;
+        }
+        $customRasterPath = __DIR__ . '/' . ltrim($customFav, '/');
+        if (file_exists($customRasterPath) && filesize($customRasterPath) > 0) {
+            $mime = site_favicon_mime($customFav);
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=86400');
+            readfile($customRasterPath);
+            exit;
+        }
     }
     $icoPath = __DIR__ . '/favicon.ico';
     if (!file_exists($icoPath)) {

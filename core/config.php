@@ -124,12 +124,95 @@ function cms_remove_logo(): void {
     cms_save_config($config);
 }
 
+/**
+ * Resize raster image using available system driver (GD, GraphicsMagick, ImageMagick, FFmpeg).
+ */
+function cms_resize_image_file(string $srcPath, string $destPath, int $maxW = 128, int $maxH = 128, string $targetFormat = 'png'): bool {
+    // 1. Try PHP GD extension if available
+    if (function_exists('imagecreatefromstring')) {
+        $raw = @file_get_contents($srcPath);
+        if ($raw) {
+            $src = @imagecreatefromstring($raw);
+            if ($src) {
+                $orig_w = imagesx($src);
+                $orig_h = imagesy($src);
+                if ($orig_w > 0 && $orig_h > 0) {
+                    $ratio = min($maxW / $orig_w, $maxH / $orig_h);
+                    $new_w = max(1, (int)round($orig_w * $ratio));
+                    $new_h = max(1, (int)round($orig_h * $ratio));
+                    $dst = imagecreatetruecolor($new_w, $new_h);
+                    imagealphablending($dst, false);
+                    imagesavealpha($dst, true);
+                    $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+                    imagefilledrectangle($dst, 0, 0, $new_w, $new_h, $transparent);
+                    imagecopyresampled($dst, $src, 0, 0, 0, 0, $new_w, $new_h, $orig_w, $orig_h);
+                    imagealphablending($dst, false);
+                    imagesavealpha($dst, true);
+                    $saved = imagepng($dst, $destPath, 8);
+                    imagedestroy($src);
+                    imagedestroy($dst);
+                    if ($saved && file_exists($destPath) && filesize($destPath) > 0) return true;
+                }
+            }
+        }
+    }
+
+    // 2. Try GraphicsMagick (gm)
+    $gm = is_executable('/usr/bin/gm') ? '/usr/bin/gm' : (trim((string)@shell_exec('which gm 2>/dev/null')) ?: '');
+    if ($gm) {
+        $cmd = escapeshellarg($gm) . ' convert ' . escapeshellarg($srcPath) . ' -background none -resize ' . escapeshellarg("{$maxW}x{$maxH}") . ' ' . escapeshellarg($destPath) . ' 2>&1';
+        @exec($cmd, $out, $ret);
+        if ($ret === 0 && file_exists($destPath) && filesize($destPath) > 0) return true;
+    }
+
+    // 3. Try ImageMagick (convert / magick)
+    $im = is_executable('/usr/bin/convert') ? '/usr/bin/convert' : (trim((string)@shell_exec('which convert 2>/dev/null')) ?: '');
+    if (!$im) $im = is_executable('/usr/bin/magick') ? '/usr/bin/magick' : (trim((string)@shell_exec('which magick 2>/dev/null')) ?: '');
+    if ($im) {
+        $cmd = escapeshellarg($im) . ' ' . escapeshellarg($srcPath) . ' -background none -resize ' . escapeshellarg("{$maxW}x{$maxH}") . ' ' . escapeshellarg($destPath) . ' 2>&1';
+        @exec($cmd, $out, $ret);
+        if ($ret === 0 && file_exists($destPath) && filesize($destPath) > 0) return true;
+    }
+
+    // 4. Try FFmpeg
+    $ffmpeg = is_executable('/usr/bin/ffmpeg') ? '/usr/bin/ffmpeg' : (trim((string)@shell_exec('which ffmpeg 2>/dev/null')) ?: '');
+    if ($ffmpeg) {
+        $cmd = escapeshellarg($ffmpeg) . ' -y -v error -i ' . escapeshellarg($srcPath) . ' -vf ' . escapeshellarg("scale={$maxW}:{$maxH}:force_original_aspect_ratio=decrease") . ' ' . escapeshellarg($destPath) . ' 2>&1';
+        @exec($cmd, $out, $ret);
+        if ($ret === 0 && file_exists($destPath) && filesize($destPath) > 0) return true;
+    }
+
+    return @copy($srcPath, $destPath);
+}
+
+/**
+ * Creates an official MS Windows ICO file wrapping PNG data.
+ */
+function cms_generate_ico(string $pngPath, string $icoPath, int $w = 128, int $h = 128): bool {
+    $pngData = @file_get_contents($pngPath);
+    if (!$pngData) return false;
+    $size = strlen($pngData);
+    $header = pack('vvv', 0, 1, 1);
+    $entry = pack('CCCCvvVV', $w >= 256 ? 0 : $w, $h >= 256 ? 0 : $h, 0, 0, 1, 32, $size, 22);
+    return (bool)@file_put_contents($icoPath, $header . $entry . $pngData);
+}
+
 function site_favicon(): string {
     $config = cms_config();
     $fav = $config['site_favicon'] ?? '';
     if ($fav) {
         if (preg_match('#^https?://#i', $fav)) {
             return $fav;
+        }
+        $localPath = ROOT_PATH . '/' . ltrim($fav, '/');
+        // Auto-downscale oversized legacy raster favicons (e.g. 2750x2750)
+        if (file_exists($localPath) && is_file($localPath) && !str_ends_with(strtolower($localPath), '.svg')) {
+            $info = @getimagesize($localPath);
+            if ($info && ($info[0] > 192 || $info[1] > 192)) {
+                cms_resize_image_file($localPath, $localPath, 128, 128, 'png');
+                $icoPath = preg_replace('/\.[a-z0-9]+$/i', '.ico', $localPath);
+                cms_generate_ico($localPath, $icoPath, 128, 128);
+            }
         }
         return rtrim(base_url(), '/') . '/' . ltrim($fav, '/');
     }
@@ -157,14 +240,37 @@ function cms_favicon_tags(): string {
     $escapedUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
     $baseUrl = rtrim(base_url(), '/');
 
-    $html = '<link rel="icon" type="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" href="' . $escapedUrl . '">' . "\n";
-    if ($mime === 'image/svg+xml') {
-        // In Firefox / Zen Browser, an alternate icon MUST be a raster file (ICO / PNG).
+    // Corresponding ICO URL if available
+    $icoUrl = '';
+    $config = cms_config();
+    $fav = $config['site_favicon'] ?? '';
+    if ($fav) {
+        $candidateIco = preg_replace('/\.[a-z0-9]+$/i', '.ico', $fav);
+        if (file_exists(ROOT_PATH . '/' . ltrim($candidateIco, '/'))) {
+            $icoUrl = htmlspecialchars($baseUrl . '/' . ltrim($candidateIco, '/'), ENT_QUOTES, 'UTF-8');
+        }
+    }
+    if (!$icoUrl) {
         $icoUrl = htmlspecialchars($baseUrl . '/media/favicon/default.ico', ENT_QUOTES, 'UTF-8');
-        $pngUrl = htmlspecialchars($baseUrl . '/media/favicon/default.png', ENT_QUOTES, 'UTF-8');
+    }
+
+    $html = '';
+    if ($mime === 'image/svg+xml') {
+        $html .= '<link rel="icon" type="image/svg+xml" href="' . $escapedUrl . '">' . "\n";
         $html .= '<link rel="alternate icon" type="image/x-icon" href="' . $icoUrl . '">' . "\n";
+        $pngFallback = preg_replace('/\.svg$/i', '.png', $fav);
+        if ($fav && file_exists(ROOT_PATH . '/' . ltrim($pngFallback, '/'))) {
+            $pngUrl = htmlspecialchars($baseUrl . '/' . ltrim($pngFallback, '/'), ENT_QUOTES, 'UTF-8');
+        } else {
+            $pngUrl = htmlspecialchars($baseUrl . '/media/favicon/default.png', ENT_QUOTES, 'UTF-8');
+        }
         $html .= '<link rel="apple-touch-icon" href="' . $pngUrl . '">' . "\n";
     } else {
+        $html .= '<link rel="icon" type="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" sizes="32x32" href="' . $escapedUrl . '">' . "\n";
+        $html .= '<link rel="shortcut icon" href="' . ($icoUrl ?: $escapedUrl) . '">' . "\n";
+        if ($icoUrl && $icoUrl !== $escapedUrl) {
+            $html .= '<link rel="alternate icon" type="image/x-icon" href="' . $icoUrl . '">' . "\n";
+        }
         $html .= '<link rel="apple-touch-icon" href="' . $escapedUrl . '">' . "\n";
     }
     return $html;
@@ -175,7 +281,7 @@ function cms_save_favicon(array $file): ?string {
         return null;
     }
 
-    if ($file['size'] > 5 * 1024 * 1024) {
+    if ($file['size'] > 10 * 1024 * 1024) {
         return null;
     }
 
@@ -217,35 +323,68 @@ function cms_save_favicon(array $file): ?string {
         @mkdir($dir, 0755, true);
     }
 
-    $filename = 'favicon_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
-    $targetPath = $dir . '/' . $filename;
+    $hash = substr(md5(uniqid()), 0, 8);
 
-    $moved = is_uploaded_file($file['tmp_name'])
-        ? move_uploaded_file($file['tmp_name'], $targetPath)
-        : @copy($file['tmp_name'], $targetPath);
+    if ($ext === 'svg') {
+        $filename = 'favicon_' . $hash . '.svg';
+        $targetPath = $dir . '/' . $filename;
+        $moved = is_uploaded_file($file['tmp_name'])
+            ? move_uploaded_file($file['tmp_name'], $targetPath)
+            : @copy($file['tmp_name'], $targetPath);
+        if (!$moved) return null;
 
-    if ($moved) {
-        $config = cms_config();
-        $oldFav = $config['site_favicon'] ?? '';
-        if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_ends_with($oldFav, 'default.svg')) {
-            $oldFile = ROOT_PATH . '/' . $oldFav;
-            if (file_exists($oldFile) && is_file($oldFile) && realpath($oldFile) !== realpath($targetPath)) {
-                @unlink($oldFile);
-            }
+        // Try to generate a 128x128 PNG counterpart and ICO counterpart
+        $pngPath = $dir . '/favicon_' . $hash . '.png';
+        $icoPath = $dir . '/favicon_' . $hash . '.ico';
+        if (cms_resize_image_file($targetPath, $pngPath, 128, 128, 'png')) {
+            cms_generate_ico($pngPath, $icoPath, 128, 128);
         }
-        return 'media/favicon/' . $filename;
+    } else {
+        // Any raster format (PNG, JPG, WebP, GIF, ICO) -> resize to 128x128 PNG
+        $filename = 'favicon_' . $hash . '.png';
+        $targetPath = $dir . '/' . $filename;
+        $icoPath = $dir . '/favicon_' . $hash . '.ico';
+
+        $resized = cms_resize_image_file($file['tmp_name'], $targetPath, 128, 128, 'png');
+        if (!$resized) {
+            $moved = is_uploaded_file($file['tmp_name'])
+                ? move_uploaded_file($file['tmp_name'], $targetPath)
+                : @copy($file['tmp_name'], $targetPath);
+            if (!$moved) return null;
+        }
+
+        // Generate official .ico wrapper
+        cms_generate_ico($targetPath, $icoPath, 128, 128);
     }
 
-    return null;
+    // Clean up old custom favicons (excluding default.svg / default.ico)
+    $config = cms_config();
+    $oldFav = $config['site_favicon'] ?? '';
+    if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_contains($oldFav, 'default.')) {
+        $oldFile = ROOT_PATH . '/' . $oldFav;
+        if (file_exists($oldFile) && is_file($oldFile) && realpath($oldFile) !== realpath($targetPath)) {
+            @unlink($oldFile);
+        }
+        $oldIco = preg_replace('/\.[a-z0-9]+$/i', '.ico', $oldFile);
+        if (file_exists($oldIco) && is_file($oldIco) && realpath($oldIco) !== realpath($icoPath ?? '')) {
+            @unlink($oldIco);
+        }
+    }
+
+    return 'media/favicon/' . $filename;
 }
 
 function cms_remove_favicon(): void {
     $config = cms_config();
     $oldFav = $config['site_favicon'] ?? '';
-    if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_ends_with($oldFav, 'default.svg')) {
+    if ($oldFav && str_starts_with($oldFav, 'media/favicon/') && !str_contains($oldFav, 'default.')) {
         $oldFile = ROOT_PATH . '/' . $oldFav;
         if (file_exists($oldFile) && is_file($oldFile)) {
             @unlink($oldFile);
+        }
+        $oldIco = preg_replace('/\.[a-z0-9]+$/i', '.ico', $oldFile);
+        if (file_exists($oldIco) && is_file($oldIco)) {
+            @unlink($oldIco);
         }
     }
     $config['site_favicon'] = '';

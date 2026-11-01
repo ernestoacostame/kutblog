@@ -69,6 +69,7 @@ function render_theme(string $template, array $vars = []): void {
         return;
     }
     
+    ob_start();
     // Load header
     $header_file = theme_file('header.php');
     if (file_exists($header_file)) include $header_file;
@@ -87,6 +88,11 @@ function render_theme(string $template, array $vars = []): void {
         require_once ROOT_PATH . '/core/analytics.php';
         analytics_render_tracker();
     }
+    $rendered = ob_get_clean();
+    if (function_exists('cms_sanitize_local_file_urls')) {
+        $rendered = cms_sanitize_local_file_urls($rendered);
+    }
+    echo $rendered;
 }
 
 function theme_asset_url(string $asset): string {

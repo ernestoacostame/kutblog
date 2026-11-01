@@ -176,7 +176,7 @@ function md_inline(string $text): string {
     // Images before links
     $text = preg_replace_callback('/!\[([^\]]*)\]\(([^)]+)\)/', function($m) {
         $src_raw = trim($m[2]);
-        if (preg_match('/^file:\/\//i', $src_raw)) {
+        if (preg_match('/^file:\/+/i', $src_raw)) {
             return '';
         }
         $alt = htmlspecialchars($m[1]);
@@ -198,7 +198,7 @@ function md_inline(string $text): string {
     $text = preg_replace_callback('/\[([^\]]+)\]\(([^)]+)\)/', function($m) {
         $label = $m[1];
         $url = trim($m[2]);
-        if (preg_match('/^file:\/\//i', $url)) {
+        if (preg_match('/^file:\/+/i', $url)) {
             return "<code>{$label}</code>";
         }
         $href = htmlspecialchars($url);

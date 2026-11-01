@@ -78,6 +78,40 @@ function get_content_backups(string $type, string $slug): array {
     return $result;
 }
 
+/**
+ * Sanitiza URLs locales file:/// para prevenir Security Error en navegadores modernos (Firefox, etc.)
+ */
+function cms_sanitize_local_file_urls(string $html): string {
+    if ($html === '' || !str_contains($html, 'file:')) {
+        return $html;
+    }
+    // 1. Anchors: <a ... href="file://...">label</a> -> <code>label</code>
+    $html = preg_replace_callback('/<a\s+[^>]*href=["\']?file:\/+[^\s"\'>]*["\']?[^>]*>(.*?)<\/a>/is', function($m) {
+        return '<code>' . $m[1] . '</code>';
+    }, $html);
+
+    // 2. Embedded elements: <(img|source|audio|video|iframe|embed|object|script|link) ... (src|href|data)="file://..."> -> remove tag
+    $html = preg_replace('/<(?:img|audio|video|source|iframe|embed|object|script|link)\s+[^>]*(?:src|href|data)=["\']?file:\/+[^\s"\'>]*["\']?[^>]*>/is', '', $html);
+
+    // 3. Fallback: Any remaining src/href/data attribute pointing to file:/ -> point to #
+    $html = preg_replace('/\b(href|src|data)=["\']?file:\/+[^\s"\'>]*["\']?/i', '$1="#"', $html);
+
+    return $html;
+}
+
+function cms_sanitize_content_item(array $data): array {
+    if (!empty($data['content'])) {
+        $data['content'] = cms_sanitize_local_file_urls($data['content']);
+    }
+    if (!empty($data['excerpt'])) {
+        $data['excerpt'] = cms_sanitize_local_file_urls($data['excerpt']);
+    }
+    if (!empty($data['featured_image']) && preg_match('#^file:/#i', $data['featured_image'])) {
+        $data['featured_image'] = '';
+    }
+    return $data;
+}
+
 function save_content(string $type, array $data): string {
     $dir = content_path($type);
     if (!is_dir($dir)) mkdir($dir, 0755, true);
@@ -116,15 +150,7 @@ function save_content(string $type, array $data): string {
     }
 
     // Sanitizar enlaces y recursos locales file:/// para prevenir Security Error en navegadores
-    if (!empty($data['content'])) {
-        $data['content'] = preg_replace_callback('/<a\s+[^>]*href=["\']file:\/\/[^"\']*["\'][^>]*>(.*?)<\/a>/is', function($m) {
-            return '<code>' . $m[1] . '</code>';
-        }, $data['content']);
-        $data['content'] = preg_replace('/<(?:img|audio|video|source)\s+[^>]*src=["\']file:\/\/[^"\']*["\'][^>]*>/is', '', $data['content']);
-    }
-    if (!empty($data['featured_image']) && str_starts_with($data['featured_image'], 'file://')) {
-        $data['featured_image'] = '';
-    }
+    $data = cms_sanitize_content_item($data);
     
     // Create a backup before saving
     save_content_backup($type, $data);
@@ -144,15 +170,7 @@ function get_content(string $type, string $slug): ?array {
     $data = json_decode(file_get_contents($file), true);
 
     if ($data) {
-        if (!empty($data['content'])) {
-            $data['content'] = preg_replace_callback('/<a\s+[^>]*href=["\']file:\/\/[^"\']*["\'][^>]*>(.*?)<\/a>/is', function($m) {
-                return '<code>' . $m[1] . '</code>';
-            }, $data['content']);
-            $data['content'] = preg_replace('/<(?:img|audio|video|source)\s+[^>]*src=["\']file:\/\/[^"\']*["\'][^>]*>/is', '', $data['content']);
-        }
-        if (!empty($data['featured_image']) && str_starts_with($data['featured_image'], 'file://')) {
-            $data['featured_image'] = '';
-        }
+        $data = cms_sanitize_content_item($data);
     }
 
     if ($data && $type === 'articles' && empty($data['mastodon_url'])) {
@@ -221,7 +239,7 @@ function get_content_index(string $type, bool $force = false): array {
             $raw = @file_get_contents($file);
             $data = json_decode($raw, true);
             if (!$data || !is_array($data)) continue;
-            $items[] = $data;
+            $items[] = cms_sanitize_content_item($data);
         }
     }
 
