@@ -249,7 +249,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
               <div id="image-bubble-menu" class="writing-bubble-menu image-align-toolbar" style="display:none;" role="toolbar" aria-label="Alineación y tamaño de imagen">
                 <!-- Group 1: Alignment (Segmented Control) -->
                 <div class="img-tb-group" role="group" aria-label="Alineación">
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="left" data-img-align="left" title="Alinear a la izquierda (flotar con texto)">
+                  <button type="button" class="img-tb-btn bubble-btn" data-img-align="left" title="Alinear a la izquierda (flotar con texto)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="3" y="4" width="8" height="8" rx="1"></rect>
                       <line x1="14" y1="5" x2="21" y2="5"></line>
@@ -258,14 +258,14 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                       <line x1="3" y1="19" x2="21" y2="19"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="center" data-img-align="center" title="Centrar">
+                  <button type="button" class="img-tb-btn bubble-btn" data-img-align="center" title="Centrar">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="3" y1="4" x2="21" y2="4"></line>
                       <rect x="7" y="8" width="10" height="8" rx="1"></rect>
                       <line x1="3" y1="20" x2="21" y2="20"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="right" data-img-align="right" title="Alinear a la derecha (flotar con texto)">
+                  <button type="button" class="img-tb-btn bubble-btn" data-img-align="right" title="Alinear a la derecha (flotar con texto)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="13" y="4" width="8" height="8" rx="1"></rect>
                       <line x1="3" y1="5" x2="10" y2="5"></line>
@@ -274,7 +274,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                       <line x1="3" y1="19" x2="21" y2="19"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="full" data-img-align="full" title="Ancho completo">
+                  <button type="button" class="img-tb-btn bubble-btn" data-img-align="full" title="Ancho completo">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="2" y1="4" x2="22" y2="4"></line>
                       <rect x="2" y="7" width="20" height="10" rx="1"></rect>
@@ -951,8 +951,11 @@ body.scheme-light #image-bubble-menu .img-tb-group {
   transition: all 0.12s ease !important;
   box-sizing: border-box !important;
   flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
   text-decoration: none !important;
   float: none !important;
+  clear: none !important;
+  position: static !important;
 }
 body.scheme-light #image-bubble-menu .img-tb-btn {
   color: rgba(0, 0, 0, 0.7) !important;
@@ -3684,8 +3687,8 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         const align = attrs.align || 'center';
         const width = attrs.width || '100%';
 
-        imageBubbleMenu.querySelectorAll('[data-align]').forEach(btn => {
-          btn.classList.toggle('active', btn.getAttribute('data-align') === align);
+        imageBubbleMenu.querySelectorAll('[data-img-align]').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-img-align') === align);
         });
 
         imageBubbleMenu.querySelectorAll('[data-size]').forEach(btn => {
@@ -3757,10 +3760,10 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   }
 
   // Handle image alignment toolbar buttons
-  imageBubbleMenu?.querySelectorAll('[data-align]').forEach(btn => {
+  imageBubbleMenu?.querySelectorAll('[data-img-align]').forEach(btn => {
     btn.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      const align = btn.getAttribute('data-align');
+      const align = btn.getAttribute('data-img-align');
       if (window.pmEditor) {
         window.pmEditor.chain().focus().updateAttributes('image', { align }).run();
         updateBubblePosition(window.pmEditor);
