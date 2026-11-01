@@ -33,6 +33,9 @@ $total_pages  = $posts['pages'] ?? 1;
       $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
       $day = date('d', $ts);
       $month_short = ucfirst(month_name((int)date('n', $ts), true));
+      $month_str = mb_strtoupper($month_short);
+      $year = date('Y', $ts);
+      $weekday = ucfirst(day_name((int)date('N', $ts), false));
       $date_formatted = format_date($ts, 'full');
 
       $first_cat = !empty($post['categories'][0]) ? $post['categories'][0] : null;
@@ -165,12 +168,12 @@ $total_pages  = $posts['pages'] ?? 1;
       <div class="calendar-active-widget">
         <div class="widget-calendar-card">
           <div class="cal-card-header">
-            <span class="cal-card-month" id="cal-widget-month"><?= $first_post_info['month'] ?? date('M') ?></span>
+            <span class="cal-card-month" id="cal-widget-month"><?= $first_post_info['month'] ?? mb_strtoupper(month_name((int)date('n'), true)) ?></span>
             <span class="cal-card-year" id="cal-widget-year"><?= $first_post_info['year'] ?? date('Y') ?></span>
           </div>
           <div class="cal-card-body">
             <span class="cal-card-day" id="cal-widget-day"><?= $first_post_info['day'] ?? date('d') ?></span>
-            <span class="cal-card-weekday" id="cal-widget-weekday"><?= $first_post_info['weekday'] ?? '' ?></span>
+            <span class="cal-card-weekday" id="cal-widget-weekday"><?= $first_post_info['weekday'] ?? ucfirst(day_name((int)date('N'), false)) ?></span>
           </div>
         </div>
 

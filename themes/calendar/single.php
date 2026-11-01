@@ -36,7 +36,9 @@ $read_time = max(1, (int)ceil($words / 200));
 $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
 $day = date('d', $ts);
 $month_short = ucfirst(month_name((int)date('n', $ts), true));
+$month_str = mb_strtoupper($month_short);
 $year = date('Y', $ts);
+$weekday = ucfirst(day_name((int)date('N', $ts), false));
 $time_str = date('H:i', $ts);
 $date_full = format_date($ts, 'full');
 
