@@ -1080,9 +1080,13 @@ body.scheme-light #image-bubble-menu .img-tb-sep {
   max-width: calc(100vw - 20px);
   max-height: 340px;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 5px;
   user-select: none;
+  -webkit-user-select: none;
 }
 @media (max-width: 640px) {
   .writing-slash-menu {
@@ -1098,11 +1102,14 @@ body.scheme-light #image-bubble-menu .img-tb-sep {
   letter-spacing: 0.05em;
   color: var(--muted);
   padding: 6px 10px 4px;
+  user-select: none;
+  touch-action: pan-y;
 }
 .slash-items {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  touch-action: pan-y;
 }
 .slash-item {
   display: flex;
@@ -1112,6 +1119,10 @@ body.scheme-light #image-bubble-menu .img-tb-sep {
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .slash-item:hover, .slash-item.active {
   background: var(--surface2);
@@ -4037,9 +4048,14 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   // 5. SLASH COMMAND PALETTE (/)
   let slashActive = false;
   let slashIdx = 0;
+  let slashTouchStartX = 0;
+  let slashTouchStartY = 0;
+  let slashIsScrolling = false;
+  let lastSlashExecTime = 0;
 
   function closeSlashMenu() {
     slashActive = false;
+    slashIsScrolling = false;
     if (slashMenu) slashMenu.style.display = 'none';
   }
 
@@ -4082,8 +4098,10 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     slashMenu.style.zIndex = '9999';
     slashMenu.style.display = 'block';
     slashActive = true;
+    slashIsScrolling = false;
     slashIdx = 0;
-    updateSlashSelection();
+    slashMenu.scrollTop = 0;
+    updateSlashSelection(false);
 
     // Use visualViewport for iOS Safari / virtual keyboard awareness
     const vv = window.visualViewport;
@@ -4092,9 +4110,12 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     const vpTop = vv ? vv.offsetTop : 0;
     const vpLeft = vv ? vv.offsetLeft : 0;
 
+    const maxAllowedHeight = Math.max(160, Math.min(340, Math.floor(vpHeight - 40)));
+    slashMenu.style.maxHeight = `${maxAllowedHeight}px`;
+
     const menuRect = slashMenu.getBoundingClientRect();
     const menuWidth = Math.min(menuRect.width || 290, vpWidth - 20);
-    const menuHeight = Math.min(menuRect.height || 260, vpHeight - 40);
+    const menuHeight = Math.min(menuRect.height || 260, maxAllowedHeight);
 
     let top = 80;
     let left = 10;
@@ -4121,12 +4142,14 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     slashMenu.style.top = `${Math.round(top)}px`;
   }
 
-  function updateSlashSelection() {
+  function updateSlashSelection(scroll = false) {
     if (!slashMenu) return;
     const items = slashMenu.querySelectorAll('.slash-item');
     items.forEach((it, i) => {
       it.classList.toggle('active', i === slashIdx);
-      if (i === slashIdx) it.scrollIntoView({ block: 'nearest' });
+      if (scroll && i === slashIdx) {
+        it.scrollIntoView({ block: 'nearest' });
+      }
     });
   }
 
@@ -4205,17 +4228,62 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   }
 
-  slashMenu?.querySelectorAll('.slash-item').forEach((item, idx) => {
-    function handleSelect(e) {
+  // Passive touch tracking on slashMenu to reliably distinguish tap from scroll
+  slashMenu?.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) {
+      slashTouchStartX = e.touches[0].clientX;
+      slashTouchStartY = e.touches[0].clientY;
+      slashIsScrolling = false;
+    }
+  }, { passive: true });
+
+  slashMenu?.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches.length > 0) {
+      const dx = Math.abs(e.touches[0].clientX - slashTouchStartX);
+      const dy = Math.abs(e.touches[0].clientY - slashTouchStartY);
+      if (dx > 8 || dy > 8) {
+        slashIsScrolling = true;
+      }
+    }
+  }, { passive: true });
+
+  slashMenu?.addEventListener('touchend', () => {
+    setTimeout(() => {
+      slashIsScrolling = false;
+    }, 150);
+  }, { passive: true });
+
+  function triggerSlashItem(item, e) {
+    if (slashIsScrolling) return;
+    const now = Date.now();
+    if (now - lastSlashExecTime < 300) return;
+    lastSlashExecTime = now;
+
+    if (e) {
       e.preventDefault();
       e.stopPropagation();
-      executeSlashCommand(item.getAttribute('data-cmd'));
     }
-    item.addEventListener('pointerdown', handleSelect);
-    item.addEventListener('click', handleSelect);
+    const cmd = item.getAttribute('data-cmd');
+    if (cmd) {
+      executeSlashCommand(cmd);
+    }
+  }
+
+  slashMenu?.querySelectorAll('.slash-item').forEach((item, idx) => {
+    item.addEventListener('click', (e) => {
+      triggerSlashItem(item, e);
+    });
+
+    item.addEventListener('touchend', (e) => {
+      if (slashIsScrolling) return;
+      triggerSlashItem(item, e);
+    });
+
     item.addEventListener('mouseenter', () => {
-      slashIdx = idx;
-      updateSlashSelection();
+      if (!slashIsScrolling) {
+        slashIdx = idx;
+        updateSlashSelection(false);
+      }
     });
   });
 
@@ -4225,13 +4293,13 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         slashIdx = (slashIdx + 1) % items.length;
-        updateSlashSelection();
+        updateSlashSelection(true);
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         slashIdx = (slashIdx - 1 + items.length) % items.length;
-        updateSlashSelection();
+        updateSlashSelection(true);
         return;
       }
       if (e.key === 'Enter') {
