@@ -5,7 +5,8 @@
         "kutpod",
         "search-replace",
         "newsletter",
-        "media-folders"
+        "media-folders",
+        "series"
     ],
     "fediverse_username": "blog_test"
 }

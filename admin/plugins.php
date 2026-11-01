@@ -88,7 +88,7 @@ if ($sub_action === 'settings' && $pluginId !== '') {
 
     if (file_exists($optionsFile)) {
         // Load layout header for configuration view
-        $active_nav = ($pluginId === 'wp-import') ? 'import' : (($pluginId === 'search-replace') ? 'tools' : 'plugins');
+        $active_nav = ($pluginId === 'wp-import') ? 'import' : (($pluginId === 'search-replace') ? 'tools' : (($pluginId === 'series') ? 'series' : 'plugins'));
         $page_header_title = ($pluginId === 'wp-import' || $pluginId === 'search-replace') ? htmlspecialchars($plugin['name']) : ('Configurar ' . htmlspecialchars($plugin['name']));
         admin_header($page_header_title, $active_nav);
         ?>

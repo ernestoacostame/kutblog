@@ -123,6 +123,14 @@ if (cms_plugin_is_active('kutpod')) {
     }
 }
 
+// ── Series Integration (/series, /series/<slug>) ───────────────────────────
+if (cms_plugin_is_active('series')) {
+    require_once ROOT_PATH . '/plugins/series/series.php';
+    if (series_route_request($path, $segments)) {
+        exit;
+    }
+}
+
 // ── Homepage / blog listing ───────────────────────────────────────────────
 if ($path === '' || $path === 'blog') {
     $page_num = max(1, (int)($_GET['page'] ?? 1));

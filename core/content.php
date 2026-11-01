@@ -195,6 +195,14 @@ function delete_content(string $type, string $slug): bool {
         }
     }
 
+    // Desvincular de series si el plugin está activo
+    if ($type === 'articles' && cms_plugin_is_active('series')) {
+        require_once ROOT_PATH . '/plugins/series/series.php';
+        if (function_exists('series_on_delete_post')) {
+            series_on_delete_post($slug);
+        }
+    }
+
     unlink($file);
     invalidate_content_index($type);
     clear_cache();

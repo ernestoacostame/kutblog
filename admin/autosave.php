@@ -43,12 +43,19 @@ if (!$slug) {
         'mastodon_url'   => $_POST['mastodon_url'] ?? '',
         'kutpod_url'     => trim($_POST['kutpod_url'] ?? ''),
         'podcast_meta'   => null,
+        'series_id'      => trim($_POST['series_id'] ?? ''),
     ];
     if (cms_plugin_is_active('kutpod') && !empty($autoData['kutpod_url'])) {
         require_once dirname(__DIR__) . '/plugins/kutpod/kutpod.php';
         $autoData['podcast_meta'] = kutpod_resolve_meta_from_url($autoData['kutpod_url']);
     }
     $slug = save_content($type, $autoData);
+    if ($type === 'articles' && cms_plugin_is_active('series') && !empty($autoData['series_id'])) {
+        require_once dirname(__DIR__) . '/plugins/series/series.php';
+        if (function_exists('series_assign_post')) {
+            series_assign_post($slug, $autoData['series_id']);
+        }
+    }
     echo json_encode(['ok' => true, 'slug' => $slug, 'new' => true]);
     exit;
 }
@@ -66,6 +73,16 @@ $existing['tags']           = array_filter(array_map('trim', explode(',', $_POST
 $existing['featured_image'] = $_POST['featured_image'] ?? ($existing['featured_image'] ?? '');
 $existing['mastodon_url']   = $_POST['mastodon_url'] ?? ($existing['mastodon_url'] ?? '');
 $existing['kutpod_url']     = trim($_POST['kutpod_url'] ?? ($existing['kutpod_url'] ?? ''));
+
+if (isset($_POST['series_id'])) {
+    $existing['series_id'] = trim($_POST['series_id']);
+    if ($type === 'articles' && cms_plugin_is_active('series')) {
+        require_once dirname(__DIR__) . '/plugins/series/series.php';
+        if (function_exists('series_assign_post')) {
+            series_assign_post($slug, $existing['series_id'] ?: null);
+        }
+    }
+}
 
 if (cms_plugin_is_active('kutpod') && !empty($existing['kutpod_url'])) {
     require_once dirname(__DIR__) . '/plugins/kutpod/kutpod.php';

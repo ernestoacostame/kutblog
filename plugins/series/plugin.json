@@ -1,0 +1,8 @@
+{
+  "id": "series",
+  "name": "Series de Artículos",
+  "version": "1.0.0",
+  "description": "Permite agrupar artículos relacionados dentro de series o tutoriales secuenciales con orden de lectura personalizado, enlaces entre entregas y páginas dedicadas.",
+  "author": "KutBlog",
+  "has_settings": true
+}

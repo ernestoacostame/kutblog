@@ -46,6 +46,12 @@ function render_theme(string $template, array $vars = []): void {
         if (cms_plugin_is_active('kutpod') && function_exists('kutpod_filter_content')) {
             $vars['post']['content'] = kutpod_filter_content($vars['post']['content'], $vars['post']);
         }
+        if ($template === 'single' && ($vars['type'] ?? '') !== 'pages' && cms_plugin_is_active('series')) {
+            require_once ROOT_PATH . '/plugins/series/series.php';
+            if (function_exists('series_filter_content')) {
+                $vars['post']['content'] = series_filter_content($vars['post']['content'], $vars['post']);
+            }
+        }
         if ($template === 'single' && ($vars['type'] ?? '') !== 'pages' && cms_plugin_is_active('newsletter')) {
             require_once ROOT_PATH . '/core/newsletter.php';
             if (function_exists('newsletter_render_box')) {

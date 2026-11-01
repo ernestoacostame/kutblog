@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'mastodon_url'   => trim($_POST['mastodon_url'] ?? ''),
             'kutpod_url'     => trim($_POST['kutpod_url'] ?? ($post['kutpod_url'] ?? '')),
             'podcast_meta'   => $post['podcast_meta'] ?? null,
+            'series_id'      => trim($_POST['series_id'] ?? ($post['series_id'] ?? '')),
             'original_slug'  => $slug,
             'created_at'     => $post_created_at,
         ];
@@ -67,6 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $new_slug = save_content($type, $data);
+            if ($type === 'articles' && cms_plugin_is_active('series')) {
+                require_once dirname(__DIR__) . '/plugins/series/series.php';
+                if (function_exists('series_assign_post')) {
+                    $chosenSeries = isset($_POST['series_id']) ? trim($_POST['series_id']) : null;
+                    series_assign_post($new_slug, $chosenSeries ?: null);
+                }
+            }
             $msg = match($target_status) {
                 'scheduled' => sprintf(__('editor_scheduled_for', '¡Artículo programado para el %s!'), format_date($post_created_at, 'datetime')),
                 'published' => __('editor_published', '¡Artículo publicado con éxito!'),
@@ -549,6 +557,30 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
             </div>
             <?php endif; ?>
           </div>
+
+          <?php if (cms_plugin_is_active('series')): 
+            require_once dirname(__DIR__) . '/plugins/series/series.php';
+            $all_editor_series = function_exists('series_get_all') ? series_get_all() : [];
+            $cur_series_assigned = function_exists('series_get_for_post') ? series_get_for_post($slug ?: ($post['slug'] ?? '')) : null;
+            $selected_series_id = $cur_series_assigned['id'] ?? ($post['series_id'] ?? '');
+          ?>
+          <!-- Serie de Artículos -->
+          <div class="sheet-group">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem">
+              <label class="sheet-label" for="series-select" style="margin:0">Serie de artículos</label>
+              <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=series" target="_blank" style="font-size:0.75rem;color:var(--accent);text-decoration:none">+ Gestionar</a>
+            </div>
+            <select name="series_id" id="series-select" class="form-control" style="width:100%;padding:0.45rem 0.6rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.85rem">
+              <option value="">— Ninguna serie —</option>
+              <?php foreach ($all_editor_series as $s): ?>
+                <option value="<?= htmlspecialchars($s['id']) ?>" <?= $selected_series_id === $s['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($s['title']) ?> (<?= count($s['posts'] ?? []) ?> entregas)
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <div class="sheet-hint">Agrupa este artículo dentro de una secuencia o tutorial ordenado.</div>
+          </div>
+          <?php endif; ?>
           <?php endif; ?>
 
           <!-- 6. Imagen Destacada (Picture Slot) -->
@@ -4655,6 +4687,7 @@ function getFormData() {
     featured_image: document.getElementById('featured_image_input')?.value || '',
     mastodon_url:   document.querySelector('[name="mastodon_url"]')?.value || '',
     kutpod_url:     document.querySelector('[name="kutpod_url"]')?.value || '',
+    series_id:      document.getElementById('series-select')?.value || '',
   };
 }
 
@@ -4716,6 +4749,7 @@ async function syncToServer() {
     fd.append('featured_image', data.featured_image);
     fd.append('mastodon_url',   data.mastodon_url);
     fd.append('kutpod_url',     data.kutpod_url);
+    if (data.series_id !== undefined) fd.append('series_id', data.series_id);
 
     const res  = await fetch(AUTOSAVE_URL, { method: 'POST', body: fd });
     const json = await res.json();
@@ -4760,6 +4794,7 @@ document.getElementById('post-title')?.addEventListener('input', () => window.tr
 document.querySelector('[name="excerpt"]')?.addEventListener('input', () => window.triggerAutosave && window.triggerAutosave());
 document.getElementById('cat-hidden')?.addEventListener('change', () => window.triggerAutosave && window.triggerAutosave());
 document.getElementById('tag-hidden')?.addEventListener('change', () => window.triggerAutosave && window.triggerAutosave());
+document.getElementById('series-select')?.addEventListener('change', () => window.triggerAutosave && window.triggerAutosave());
 document.getElementById('featured_image_input')?.addEventListener('input', () => window.triggerAutosave && window.triggerAutosave());
 
 document.getElementById('editor-form')?.addEventListener('submit', () => {

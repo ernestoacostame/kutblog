@@ -500,6 +500,12 @@ body.scheme-light .floating-publish-btn {
       <span class="nav-label">Newsletter</span>
     </a>
     <?php endif; ?>
+    <?php if (cms_plugin_is_active('series')): ?>
+    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=series" class="nav-item <?= $active === 'series' ? 'active' : '' ?>" data-label="Series">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+      <span class="nav-label">Series</span>
+    </a>
+    <?php endif; ?>
 
     <div class="nav-section">Herramientas</div>
     <?php if (cms_plugin_is_active('wp-import')): ?>
