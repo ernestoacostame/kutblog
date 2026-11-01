@@ -195,6 +195,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $active_section = 'cache';
         }
 
+        if ($action === 'save_session_duration') {
+            require_permission('manage_settings');
+            $days = max(1, (int)($_POST['remember_me_days'] ?? 30));
+            $config['remember_me_days'] = $days;
+            cms_save_config($config);
+            $msg = "Duración de sesión de equipos recordados actualizada a {$days} días.";
+            $active_section = 'security';
+        }
+
+        if ($action === 'revoke_session_token') {
+            $sel = trim($_POST['selector'] ?? '');
+            if ($sel && $currentUser) {
+                auth_revoke_remember_token($currentUser['username'], $sel);
+                $msg = "Sesión del dispositivo revocada correctamente.";
+            }
+            $active_section = 'security';
+        }
+
+        if ($action === 'revoke_all_sessions') {
+            if ($currentUser) {
+                $currentSel = $_SESSION['remember_selector'] ?? null;
+                auth_revoke_all_remember_tokens($currentUser['username'], $currentSel);
+                $msg = "Se han cerrado las sesiones recordadas en todos los demás dispositivos.";
+            }
+            $active_section = 'security';
+        }
+
         $config = cms_config();
         $currentUser = current_user();
     }
@@ -642,6 +669,96 @@ admin_header(__("settings_title"), 'settings');
                 </div>
                 <button type="submit" class="btn btn-primary">Actualizar Contraseña</button>
               </form>
+            </div>
+          </div>
+
+          <!-- Remembered Devices & Sessions Card -->
+          <?php
+            $activeTokens = $currentUser ? auth_get_active_tokens($currentUser['username']) : [];
+            $rememberDays = (int)($config['remember_me_days'] ?? 30);
+            $currentSelector = $_SESSION['remember_selector'] ?? null;
+          ?>
+          <div class="card" style="margin-top:1.5rem">
+            <div class="card-header">
+              <span class="card-title">Equipos de Confianza y Duración de Sesión</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size:0.95rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6">
+                Al iniciar sesión con <strong>«Mantener sesión activa»</strong>, KutBlog recordará este dispositivo sin pedir usuario, contraseña ni código 2FA periódicamente.
+              </p>
+
+              <!-- Session duration form -->
+              <form method="POST" style="margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+                <input type="hidden" name="csrf" value="<?= $csrf ?>">
+                <input type="hidden" name="action" value="save_session_duration">
+                <input type="hidden" name="active_section" value="security">
+                <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+                  <div class="form-group" style="margin:0;flex:1;min-width:240px">
+                    <label class="form-label">Duración para equipos recordados</label>
+                    <select name="remember_me_days" class="form-control">
+                      <option value="7" <?= $rememberDays === 7 ? 'selected' : '' ?>>7 días</option>
+                      <option value="30" <?= $rememberDays === 30 ? 'selected' : '' ?>>30 días (1 mes - Recomendado)</option>
+                      <option value="90" <?= $rememberDays === 90 ? 'selected' : '' ?>>90 días (3 meses)</option>
+                      <option value="365" <?= $rememberDays === 365 ? 'selected' : '' ?>>365 días (1 año)</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-secondary">Guardar Duración</button>
+                </div>
+              </form>
+
+              <!-- Active sessions list -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem">
+                  <h4 style="font-size:1rem;font-weight:700;margin:0">Dispositivos con sesión persistente (<?= count($activeTokens) ?>)</h4>
+                  <?php if (count($activeTokens) > 1): ?>
+                    <form method="POST" onsubmit="return confirm('¿Cerrar sesión en todos los demás dispositivos?')">
+                      <input type="hidden" name="csrf" value="<?= $csrf ?>">
+                      <input type="hidden" name="action" value="revoke_all_sessions">
+                      <input type="hidden" name="active_section" value="security">
+                      <button type="submit" class="btn btn-danger btn-sm">Cerrar en los demás equipos</button>
+                    </form>
+                  <?php endif; ?>
+                </div>
+
+                <?php if (empty($activeTokens)): ?>
+                  <p style="font-size:0.88rem;color:var(--muted);margin:0">
+                    No hay dispositivos guardados como permanentes actualmente. Marca «Mantener sesión activa» en la pantalla de inicio de sesión para recordar este equipo.
+                  </p>
+                <?php else: ?>
+                  <div style="display:flex;flex-direction:column;gap:0.65rem">
+                    <?php foreach ($activeTokens as $tok): 
+                      $isCurrent = ($tok['selector'] === $currentSelector);
+                      $ua = htmlspecialchars($tok['user_agent'] ?? 'Navegador');
+                      $ip = htmlspecialchars($tok['ip'] ?? '');
+                      $exp = date('d/m/Y H:i', $tok['expires'] ?? time());
+                    ?>
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;gap:1rem">
+                        <div style="min-width:0;flex:1">
+                          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem">
+                            <span style="font-size:1.1rem">💻</span>
+                            <strong style="font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px"><?= $ua ?></strong>
+                            <?php if ($isCurrent): ?>
+                              <span class="badge badge-green" style="font-size:0.68rem;padding:0.15rem 0.45rem">Este equipo</span>
+                            <?php endif; ?>
+                          </div>
+                          <div style="font-size:0.78rem;color:var(--muted)">
+                            <?= $ip ? "IP: $ip · " : "" ?>Vence el <?= $exp ?>
+                          </div>
+                        </div>
+
+                        <form method="POST" onsubmit="return confirm('¿Revocar este dispositivo?')">
+                          <input type="hidden" name="csrf" value="<?= $csrf ?>">
+                          <input type="hidden" name="action" value="revoke_session_token">
+                          <input type="hidden" name="active_section" value="security">
+                          <input type="hidden" name="selector" value="<?= htmlspecialchars($tok['selector']) ?>">
+                          <button type="submit" class="btn btn-secondary btn-sm" title="Revocar sesión">✕ Revocar</button>
+                        </form>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </div>
+
             </div>
           </div>
         </div>

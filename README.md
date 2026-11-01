@@ -448,9 +448,11 @@ server {
 | Medida | Implementación |
 |---|---|
 | **Almacenamiento de contraseñas** | Algoritmo criptográfico **Argon2id**. |
+| **Doble Factor de Autenticación (2FA)** | Códigos TOTP compatibles con Google Authenticator, Aegis, Bitwarden y códigos de recuperación de un solo uso. |
+| **Sesiones persistentes (Recordarme)** | Tokens criptográficos divididos (selector + validador sha256 con rotación automática), ventana deslizante de inactividad y gestión de dispositivos de confianza. |
 | **Protección contra CSRF** | Tokens criptográficos en todos los formularios de acción del panel. |
 | **Prevención de fuerza bruta** | Bloqueo temporal por IP tras 5 intentos consecutivos fallidos. |
-| **Seguridad en Cookies de sesión** | Flags `HttpOnly`, `SameSite=Strict`, regeneración periódica y `Secure`. |
+| **Seguridad en Cookies de sesión** | Flags `HttpOnly`, `SameSite=Lax/Strict`, regeneración periódica y `Secure` en HTTPS. |
 | **Protección de subida de archivos** | Validación MIME en servidor y prohibición de ejecución de scripts en `/media/`. |
 | **Cabeceras HTTP de seguridad** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, y saneamiento de esquemas `file:///`. |
 

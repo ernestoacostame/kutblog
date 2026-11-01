@@ -22,7 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'login') {
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $result = login($username, $password);
+            $remember = !empty($_POST['remember']);
+            $result = login($username, $password, $remember);
 
             if ($result === true) {
                 header('Location: ./');
@@ -35,7 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'verify_2fa') {
             $code = trim($_POST['two_factor_code'] ?? '');
-            if (login_verify_2fa($code)) {
+            $remember = !empty($_POST['remember']) || !empty($_SESSION['2fa_pending_remember']);
+            if (login_verify_2fa($code, $remember)) {
                 header('Location: ./');
                 exit;
             } else {
@@ -44,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sleep(1);
             }
         } elseif ($action === 'cancel_2fa') {
-            unset($_SESSION['2fa_pending_user'], $_SESSION['2fa_pending_time']);
+            unset($_SESSION['2fa_pending_user'], $_SESSION['2fa_pending_time'], $_SESSION['2fa_pending_remember']);
             $step = 'password';
         }
     }
@@ -168,6 +170,12 @@ $rgb = hexdec(substr($c,1,2)).','.hexdec(substr($c,3,2)).','.hexdec(substr($c,5,
           <label style="text-align:center">Código de seguridad (TOTP)</label>
           <input type="text" name="two_factor_code" class="code-input" placeholder="000000" maxlength="12" required autofocus autocomplete="one-time-code">
         </div>
+        <div class="field" style="margin-top:-0.35rem;margin-bottom:1.35rem;display:flex;justify-content:center;">
+          <label style="display:inline-flex;align-items:center;gap:0.55rem;font-size:0.88rem;color:var(--text2);cursor:pointer;user-select:none;margin-bottom:0;font-weight:500;">
+            <input type="checkbox" name="remember" value="1" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0;" <?= !empty($_SESSION['2fa_pending_remember']) ? 'checked' : '' ?>>
+            <span>Recordar este equipo (mantener sesión iniciada)</span>
+          </label>
+        </div>
         <button type="submit" class="btn">Verificar y Acceder</button>
       </form>
       <form method="POST" style="margin-top:0.75rem">
@@ -186,6 +194,12 @@ $rgb = hexdec(substr($c,1,2)).','.hexdec(substr($c,3,2)).','.hexdec(substr($c,5,
         <div class="field">
           <label><?= __("login_password") ?></label>
           <input type="password" name="password" required autocomplete="current-password">
+        </div>
+        <div class="field" style="margin-top:-0.35rem;margin-bottom:1.35rem;">
+          <label style="display:inline-flex;align-items:center;gap:0.55rem;font-size:0.88rem;color:var(--text2);cursor:pointer;user-select:none;margin-bottom:0;font-weight:500;">
+            <input type="checkbox" name="remember" value="1" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0;" checked>
+            <span>Mantener sesión activa en este equipo</span>
+          </label>
         </div>
         <button type="submit" class="btn"><?= __("login_btn") ?></button>
       </form>
