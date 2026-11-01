@@ -198,7 +198,7 @@ admin_header('Gestión de Usuarios', 'users');
               <?php endif; ?>
             </td>
             <td style="color:var(--muted);font-size:0.88rem">
-              <?= !empty($u['last_login']) ? date('M j, Y H:i', strtotime($u['last_login'])) : 'Nunca' ?>
+              <?= !empty($u['last_login']) ? format_date($u['last_login'], 'admin') : __('never', 'Nunca') ?>
             </td>
             <td style="text-align:right">
               <button class="btn btn-secondary btn-sm" onclick='openEditUserModal(<?= json_encode($u) ?>)'>Editar</button>

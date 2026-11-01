@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $config['posts_per_page'] = max(1, (int)($_POST['posts_per_page'] ?? 8));
             $config['rss_posts_limit'] = max(1, (int)($_POST['rss_posts_limit'] ?? 20));
             $config['footer_text'] = trim($_POST['footer_text'] ?? '');
+            $config['language'] = in_array($_POST['language'] ?? '', ['es', 'en'], true) ? $_POST['language'] : 'es';
+            $config['timezone'] = in_array($_POST['timezone'] ?? '', timezone_identifiers_list(), true) ? $_POST['timezone'] : (date_default_timezone_get() ?: 'UTC');
             cms_save_config($config);
             $msg = __("saved_general", "Ajustes generales guardados.");
             $active_section = 'general';
@@ -298,6 +300,26 @@ admin_header(__("settings_title"), 'settings');
                   <div class="form-group">
                     <label class="form-label"><?= __("field_rss_posts_limit") ?></label>
                     <input type="number" name="rss_posts_limit" value="<?= (int)($config['rss_posts_limit'] ?? 20) ?>" min="1" max="100">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label"><?= __("field_language", "Idioma del sitio") ?></label>
+                    <select name="language" class="form-control">
+                      <option value="es" <?= ($config['language'] ?? 'es') === 'es' ? 'selected' : '' ?>>Español</option>
+                      <option value="en" <?= ($config['language'] ?? 'es') === 'en' ? 'selected' : '' ?>>English</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label"><?= __("field_timezone", "Zona horaria") ?></label>
+                    <select name="timezone" class="form-control">
+                      <?php
+                      $cur_tz = $config['timezone'] ?? date_default_timezone_get() ?: 'UTC';
+                      $timezones = timezone_identifiers_list();
+                      foreach ($timezones as $tz): ?>
+                        <option value="<?= htmlspecialchars($tz) ?>" <?= $cur_tz === $tz ? 'selected' : '' ?>><?= htmlspecialchars($tz) ?></option>
+                      <?php endforeach; ?>
+                    </select>
                   </div>
                 </div>
                 <div class="form-group">

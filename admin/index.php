@@ -91,7 +91,7 @@ admin_header(__("dash_title"), 'dashboard');
                 <span class="badge badge-yellow">● <?= __("dash_drafts", "Borrador") ?></span>
               <?php endif; ?>
             </td>
-            <td style="color:var(--muted);font-size:0.9rem"><?= date('M j, Y', strtotime($post['created_at'] ?? 'now')) ?></td>
+            <td style="color:var(--muted);font-size:0.9rem"><?= format_date($post['created_at'] ?? 'now', 'admin') ?></td>
             <td style="text-align:right">
               <a href="<?= base_url() ?>/admin/editor.php?type=articles&slug=<?= htmlspecialchars($post['slug']) ?>" class="btn btn-secondary btn-sm"><?= __("edit", "Editar") ?></a>
               <?php if ($post['status'] === 'published'): ?>

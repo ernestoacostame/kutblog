@@ -30,14 +30,8 @@ $next_month = $month + 1;
 $next_year  = $year;
 if ($next_month > 12) { $next_month = 1; $next_year++; }
 
-// Spanish month names
-$months_es = [
-    1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
-    5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
-    9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
-];
-
-$month_title = ($months_es[$month] ?? date('F', mktime(0,0,0,$month,1,$year))) . ' ' . $year;
+// Localized month title
+$month_title = ucfirst(month_name($month)) . ' ' . $year;
 
 // Retrieve all articles
 $all_articles = list_content('articles', false, 1, 9999)['items'] ?? [];
@@ -128,13 +122,9 @@ admin_header('Calendario de publicaciones', 'calendar');
     <div class="card" style="padding:0;overflow:hidden">
       <!-- Weekday headers -->
       <div class="cal-weekdays">
-        <div>Lunes</div>
-        <div>Martes</div>
-        <div>Miércoles</div>
-        <div>Jueves</div>
-        <div>Viernes</div>
-        <div>Sábado</div>
-        <div>Domingo</div>
+        <?php for ($d = 1; $d <= 7; $d++): ?>
+          <div><?= htmlspecialchars(ucfirst(day_name($d, false))) ?></div>
+        <?php endfor; ?>
       </div>
 
       <!-- Days Grid -->

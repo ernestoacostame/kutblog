@@ -26,7 +26,7 @@ $total_pages  = $posts['pages'] ?? 1;
         <a href="<?= $base ?>/article/<?= htmlspecialchars($post['slug']) ?>"><?= htmlspecialchars($post['title'] ?? 'Sin título') ?></a>
       </h2>
       <div class="post-row-meta">
-        <span class="post-date"><?= date('M d, Y', strtotime($post['created_at'] ?? 'now')) ?></span>
+        <span class="post-date"><?= format_date($post['created_at'] ?? 'now') ?></span>
         <?php foreach ($post['categories'] ?? [] as $cat): ?>
         <a href="<?= $base ?>/category/<?= urlencode($cat) ?>" class="post-cat"><?= htmlspecialchars($cat) ?></a>
         <?php endforeach; ?>

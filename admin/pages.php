@@ -55,7 +55,7 @@ admin_header(__("nav_pages"), 'pages');
                 <span class="badge badge-yellow">● <?= __('badge_draft', 'Borrador') ?></span>
               <?php endif; ?>
             </td>
-            <td style="color:var(--muted);font-size:0.88rem"><?= date('M j, Y', strtotime($post['updated_at'] ?? $post['created_at'] ?? 'now')) ?></td>
+            <td style="color:var(--muted);font-size:0.88rem"><?= format_date($post['updated_at'] ?? $post['created_at'] ?? 'now', 'admin') ?></td>
             <td style="text-align:right">
               <a href="<?= base_url() ?>/admin/editor.php?type=pages&slug=<?= htmlspecialchars($post['slug']) ?>" class="btn btn-secondary btn-sm"><?= __("edit", "Editar") ?></a>
               <?php if ($post['status'] === 'published'): ?>

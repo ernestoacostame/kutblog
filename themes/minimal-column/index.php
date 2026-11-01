@@ -47,7 +47,7 @@ $total_pages  = $posts['pages'] ?? 1;
         <span class="meta-dot">·</span>
       <?php endif; ?>
       <time datetime="<?= $post['created_at'] ?? '' ?>" class="item-date">
-        <?= date('d M, Y', strtotime($post['created_at'] ?? 'now')) ?>
+        <?= format_date($post['created_at'] ?? 'now') ?>
       </time>
       <span class="meta-dot">·</span>
       <span class="item-readtime"><?= $read_time ?> min de lectura</span>

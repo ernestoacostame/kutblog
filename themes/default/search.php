@@ -22,7 +22,7 @@
         <?= $item_type === 'articles' ? 'Article' : 'Page' ?>
       </span>
       <span style="color:var(--border)">·</span>
-      <span style="font-size:0.8rem;color:var(--muted)"><?= date('M j, Y', strtotime($item['created_at'] ?? 'now')) ?></span>
+      <span style="font-size:0.8rem;color:var(--muted)"><?= format_date($item['created_at'] ?? 'now') ?></span>
     </div>
     <h2 style="font-family:var(--font-heading);font-size:1.15rem;font-weight:600;margin-bottom:0.4rem">
       <a href="<?= $item_url ?>" style="color:var(--text);text-decoration:none"><?= htmlspecialchars($item['title'] ?? 'Untitled') ?></a>

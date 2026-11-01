@@ -14,7 +14,7 @@
     <div style="padding-bottom:1rem;border-bottom:1px solid var(--border)">
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem">
         <?= ($item['_type'] ?? '') === 'articles' ? 'Artículo' : 'Página' ?>
-        · <?= date('M d, Y', strtotime($item['created_at'] ?? 'now')) ?>
+        · <?= format_date($item['created_at'] ?? 'now') ?>
       </div>
       <h2 style="font-family:var(--font);font-size:1.1rem;font-weight:700;margin-bottom:0.35rem">
         <a href="<?= $item_url ?>" style="color:var(--text);text-decoration:none"><?= htmlspecialchars($item['title'] ?? 'Sin título') ?></a>

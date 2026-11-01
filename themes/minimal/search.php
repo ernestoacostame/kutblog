@@ -51,7 +51,7 @@ $count = count($results);
 
     <div class="card-content">
       <div class="card-meta">
-        <time datetime="<?= $item['created_at'] ?? '' ?>"><?= date('d M, Y', strtotime($item['created_at'] ?? 'now')) ?></time>
+        <time datetime="<?= $item['created_at'] ?? '' ?>"><?= format_date($item['created_at'] ?? 'now') ?></time>
         <span class="meta-dot"></span>
         <span><?= $read_time ?> min</span>
       </div>

@@ -549,7 +549,7 @@ function newsletter_render_broadcast_email(array $post, string $token): string {
     }
 
     // Date & Reading time metadata
-    $dateStr = !empty($post['created_at']) ? date('d/m/Y', strtotime($post['created_at'])) : date('d/m/Y');
+    $dateStr = format_date($post['created_at'] ?? 'now', 'medium');
     $author = htmlspecialchars($post['author'] ?? ($post['user'] ?? ''));
     $words = str_word_count(strip_tags($post['content'] ?? ''));
     $readingMin = max(1, (int)ceil($words / 220));

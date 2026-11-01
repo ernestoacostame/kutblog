@@ -4,13 +4,6 @@ $heading = isset($category) ? 'Categoría: ' . $category :
 
 $current_page = $posts['page'] ?? 1;
 $total_pages  = $posts['pages'] ?? 1;
-
-$months_es = [
-    1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr',
-    5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago',
-    9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
-];
-$days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 ?>
 
 <?php if ($heading): ?>
@@ -39,13 +32,8 @@ $days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'S�
       $post_url = $base . '/article/' . htmlspecialchars($post['slug']);
       $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
       $day = date('d', $ts);
-      $day_num = (int)date('j', $ts);
-      $month_num = (int)date('n', $ts);
-      $month_str = $months_es[$month_num] ?? date('M', $ts);
-      $month_short = mb_substr($month_str, 0, 3);
-      $year = date('Y', $ts);
-      $weekday = $days_es[(int)date('w', $ts)] ?? '';
-      $date_formatted = $day_num . ' de ' . $month_str . ', ' . $year;
+      $month_short = ucfirst(month_name((int)date('n', $ts), true));
+      $date_formatted = format_date($ts, 'full');
 
       $first_cat = !empty($post['categories'][0]) ? $post['categories'][0] : null;
       $has_image = !empty($post['featured_image']);
@@ -209,7 +197,7 @@ $days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'S�
             $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
             $post_year = date('Y', $ts);
             $post_day = date('d', $ts);
-            $month_short = mb_substr($months_es[(int)date('n', $ts)] ?? date('M', $ts), 0, 3);
+            $month_short = ucfirst(month_name((int)date('n', $ts), true));
             $slug = htmlspecialchars($post['slug']);
 
             if ($post_year !== $current_year_group):

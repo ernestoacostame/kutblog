@@ -42,7 +42,7 @@ $read_time = max(1, (int)ceil($words / 200));
       </a>
       <?php endforeach; ?>
       <span class="meta-dot"></span>
-      <time datetime="<?= $post['created_at'] ?? '' ?>"><?= date('d F, Y', strtotime($post['created_at'] ?? 'now')) ?></time>
+      <time datetime="<?= $post['created_at'] ?? '' ?>"><?= format_date($post['created_at'] ?? 'now', 'full') ?></time>
       <span class="meta-dot"></span>
       <span><?= $read_time ?> min de lectura</span>
     </div>
@@ -134,7 +134,7 @@ $read_time = max(1, (int)ceil($words / 200));
         }
 
         data.comments.forEach(c => {
-          const date   = new Date(c.created_at).toLocaleDateString('es', { day:'numeric', month:'short', year:'numeric' });
+          const date   = new Date(c.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day:'numeric', month:'short', year:'numeric' });
           const depth  = Math.min(c.depth || 0, 4);
           const indent = depth * 22;
           const div    = document.createElement('div');

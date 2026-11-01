@@ -33,7 +33,7 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
   <header class="article-header">
     <div class="article-meta">
       <time class="post-date" datetime="<?= $post['created_at'] ?? '' ?>">
-        <?= date('F j, Y', strtotime($post['created_at'] ?? 'now')) ?>
+        <?= format_date($post['created_at'] ?? 'now', 'full') ?>
       </time>
       <?php foreach ($post['categories'] ?? [] as $cat): ?>
       <a href="<?= $base ?>/category/<?= urlencode($cat) ?>" class="post-category"><?= htmlspecialchars($cat) ?></a>
@@ -127,7 +127,7 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
       }
 
       data.comments.forEach(c => {
-        const date   = new Date(c.created_at).toLocaleDateString('es', { day:'numeric', month:'short', year:'numeric' });
+        const date   = new Date(c.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day:'numeric', month:'short', year:'numeric' });
         const depth  = Math.min(c.depth || 0, 4); // max 4 levels indent
         const indent = depth * 20;
         const div    = document.createElement('div');

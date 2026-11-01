@@ -109,7 +109,7 @@ admin_header('Papelera', 'trash');
                 </div>
               </td>
               <td style="font-size:0.82rem; color:var(--text2);">
-                <?= !empty($item['trashed_at']) ? date('d/m/Y H:i', strtotime($item['trashed_at'])) : '—' ?>
+                <?= !empty($item['trashed_at']) ? format_date($item['trashed_at'], 'admin') : '—' ?>
               </td>
               <td style="text-align:right;">
                 <div style="display:inline-flex; gap:0.4rem;">

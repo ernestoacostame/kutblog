@@ -174,7 +174,7 @@ admin_header(__("nav_articles"), 'articles');
             </td>
             <td style="color:var(--text2);font-size:0.88rem"><?= htmlspecialchars(implode(', ', $post['categories'] ?? [])) ?: '<span style="color:var(--muted)">—</span>' ?></td>
             <td style="color:var(--muted);font-size:0.88rem">
-              <?= date('M j, Y H:i', strtotime($post['created_at'] ?? 'now')) ?>
+              <?= format_date($post['created_at'] ?? 'now', 'admin') ?>
               <?php if (($post['status'] ?? '') === 'scheduled'): ?>
                 <div style="font-size:0.75rem;color:#3b82f6;font-weight:600">Programado</div>
               <?php endif; ?>

@@ -78,6 +78,8 @@ return [
     'editor_update'     => '✓ Actualizar',
     'editor_view_live'  => 'Ver en vivo ↗',
     'editor_saved'      => '¡Guardado correctamente!',
+    'editor_published'  => '¡Artículo publicado con éxito!',
+    'editor_scheduled_for' => '¡Artículo programado para el %s!',
     'editor_error_title'=> 'El título es obligatorio.',
     'editor_error_csrf' => 'Error de seguridad. Recarga e intenta de nuevo.',
 
@@ -166,6 +168,8 @@ return [
     'field_posts_per_page'=> 'Artículos por página',
     'field_rss_posts_limit'=> 'Límite de artículos en el RSS',
     'field_footer_text' => 'Texto del footer',
+    'field_language'    => 'Idioma del sitio',
+    'field_timezone'    => 'Zona horaria',
     'field_site_logo'   => 'Logotipo del blog',
     'btn_remove_logo'   => 'Eliminar logotipo actual',
     'field_theme'       => 'Tema',

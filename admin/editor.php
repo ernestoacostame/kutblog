@@ -66,9 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $new_slug = save_content($type, $data);
-            $msg = $target_status === 'scheduled' 
-                ? '¡Artículo programado para el ' . date('d/m/Y H:i', strtotime($post_created_at)) . '!'
-                : __("editor_saved");
+            $msg = match($target_status) {
+                'scheduled' => sprintf(__('editor_scheduled_for', '¡Artículo programado para el %s!'), format_date($post_created_at, 'datetime')),
+                'published' => __('editor_published', '¡Artículo publicado con éxito!'),
+                default     => __('editor_saved', '¡Guardado correctamente!')
+            };
             $slug = $new_slug;
             $post = get_content($type, $new_slug);
             $is_new = false;
@@ -133,11 +135,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
           'scheduled' => 'scheduled',
           default     => 'draft'
       };
-      $publish_btn_label = match($cur_status) {
-          'published' => ($is_new ? 'Publicar' : 'Actualizado ✓'),
-          'scheduled' => ($is_new ? 'Programar' : 'Actualizar programado'),
-          default     => 'Publicar'
-      };
+      $save_btn_label = __('save', 'Guardar');
       ?>
 
       <div class="desk-layout">
@@ -161,8 +159,8 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                 <a href="<?= base_url() ?>/<?= $type === 'articles' ? 'article' : 'page' ?>/<?= htmlspecialchars($post['slug']) ?>" target="_blank" class="btn btn-secondary btn-sm" title="Ver en el sitio web">Ver ↗</a>
                 <?php endif; ?>
                 <button type="button" class="btn btn-secondary btn-sm" id="preview-btn" title="Previsualizar">Vista previa</button>
-                <button type="submit" form="editor-form" name="status" value="<?= htmlspecialchars($cur_status) ?>" class="btn btn-primary btn-sm" id="publish-btn">
-                  <?= $publish_btn_label ?>
+                <button type="submit" form="editor-form" class="btn btn-primary btn-sm" id="publish-btn" title="<?= __("save") ?>">
+                  <?= $save_btn_label ?>
                 </button>
               </div>
             </div>
@@ -639,7 +637,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                     </div>
                   <?php endif; ?>
                   <div style="font-size:0.72rem; color:var(--muted)">
-                    Última federación: <?= date('d/m/Y H:i', strtotime($status['published'])) ?>
+                    Última federación: <?= format_date($status['published'], 'datetime') ?>
                   </div>
                 </div>
               <?php endif; ?>
@@ -706,7 +704,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 
             <?php if ($newsSentAt): ?>
               <div style="font-size:0.75rem; color:var(--muted); margin-bottom:0.6rem;">
-                Enviado a suscriptores el <?= date('d/m/Y H:i', strtotime($newsSentAt)) ?>.
+                Enviado a suscriptores el <?= format_date($newsSentAt, 'datetime') ?>.
               </div>
               <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.82rem; color:var(--text)">
                 <input type="checkbox" name="newsletter_resend" value="1" style="width:auto; margin:0">
@@ -3298,13 +3296,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     if (!isDirty) {
       isDirty = true;
       if (publishBtn) {
-        const curStatus = document.getElementById('status-select')?.value || 'draft';
-        if (curStatus === 'published') {
-          publishBtn.textContent = 'Actualizar';
-          publishBtn.style.opacity = '1';
-        } else {
-          publishBtn.textContent = 'Publicar';
-        }
+        publishBtn.style.opacity = '1';
       }
     }
   }
@@ -4693,25 +4685,6 @@ function updateStatusUI(val) {
     pillDesk.className = 'sheet-status-pill ' + (statusClasses[val] || 'draft');
     pillDesk.textContent = statusLabels[val] || 'Borrador';
   }
-  
-  const pubBtn = document.getElementById('publish-btn');
-  if (pubBtn) {
-    if (val === 'published') {
-      pubBtn.textContent = <?= json_encode(($post && ($post['status'] ?? '') === 'published') ? __raw("editor_update") : __raw("editor_publish")) ?>;
-      pubBtn.value = 'published';
-    } else if (val === 'scheduled') {
-      pubBtn.textContent = 'Programar';
-      pubBtn.value = 'scheduled';
-    } else {
-      pubBtn.textContent = 'Guardar borrador';
-      pubBtn.value = 'draft';
-    }
-  }
-
-  const floatLabel = document.getElementById('floating-publish-label');
-  if (floatLabel) {
-    floatLabel.textContent = val === 'published' ? '<?= __raw("editor_update") ?>' : (val === 'scheduled' ? 'Programar' : 'Publicar');
-  }
 }
 
 document.querySelectorAll('input[name="status_radio"]').forEach(radio => {
@@ -6086,104 +6059,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Floating buttons for mobile -->
 <div id="floating-buttons-container" class="floating-buttons-container">
-    <button id="floating-draft-btn" class="floating-draft-btn" type="button">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        <span><?= __("editor_save_draft") ?></span>
-    </button>
     <button id="floating-focus-btn" class="floating-focus-btn" type="button" title="Modo sin distracción">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
     </button>
     <button id="floating-preview-btn" class="floating-preview-btn" type="button" title="Vista previa">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     </button>
-    <button id="floating-publish-btn" class="floating-publish-btn" type="button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        <span id="floating-publish-label"><?= $post && $post['status'] === 'published' ? __("editor_update") : __("editor_publish") ?></span>
+    <button id="floating-publish-btn" class="floating-publish-btn" type="button" title="<?= __("save") ?>">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span id="floating-publish-label"><?= __("save") ?></span>
     </button>
 </div>
 
 <script>
-// Floating buttons logic for mobile
+// Floating buttons logic for mobile & Ctrl+S shortcut
 (function() {
     const floatingContainer = document.getElementById('floating-buttons-container');
-    const floatingDraftBtn  = document.getElementById('floating-draft-btn');
     const floatingFocusBtn  = document.getElementById('floating-focus-btn');
     const floatingPreviewBtn= document.getElementById('floating-preview-btn');
     const floatingPublishBtn= document.getElementById('floating-publish-btn');
     const publishBtn        = document.getElementById('publish-btn');
-    const statusSelect      = document.getElementById('status-select');
     const form              = document.getElementById('editor-form');
 
-    if (!floatingContainer || !floatingPublishBtn || !floatingDraftBtn) return;
+    if (!floatingContainer || !floatingPublishBtn) return;
 
-    function updateFloatingLabel() {
-        const isPublished = statusSelect ? statusSelect.value === 'published' : false;
-        const label = isPublished ? '<?= __raw("editor_update") ?>' : '<?= __raw("editor_publish") ?>';
-        document.getElementById('floating-publish-label').textContent = label;
-    }
-
-    floatingDraftBtn.addEventListener('click', function() {
-        console.log('Floating draft button clicked');
-        // Sync content before saving
-        syncContentBeforeSave();
-        
-        if (statusSelect && statusSelect.value !== 'draft') {
-            statusSelect.value = 'draft';
-        }
-        const hiddenStatus = document.createElement('input');
-        hiddenStatus.type = 'hidden';
-        hiddenStatus.name = 'status';
-        hiddenStatus.value = 'draft';
-        form.appendChild(hiddenStatus);
-        form.submit();
-    });
-
-    floatingFocusBtn.addEventListener('click', function() {
+    floatingFocusBtn?.addEventListener('click', function() {
         if (typeof window.toggleFocus === 'function') {
             window.toggleFocus();
         }
     });
 
-    floatingPreviewBtn.addEventListener('click', function() {
+    floatingPreviewBtn?.addEventListener('click', function() {
         if (typeof window.openPreview === 'function') {
             window.openPreview();
         }
     });
 
-    floatingPublishBtn.addEventListener('click', function() {
-        console.log('Floating publish button clicked');
-        // Sync content before saving
-        syncContentBeforeSave();
-        
-        if (statusSelect && statusSelect.value !== 'published') {
-            statusSelect.value = 'published';
+    floatingPublishBtn?.addEventListener('click', function() {
+        if (typeof syncContentBeforeSave === 'function') {
+            syncContentBeforeSave();
         }
-        const hiddenStatus = document.createElement('input');
-        hiddenStatus.type = 'hidden';
-        hiddenStatus.name = 'status';
-        hiddenStatus.value = 'published';
-        form.appendChild(hiddenStatus);
-        form.submit();
+        form?.submit();
     });
-
-    if (statusSelect) {
-        statusSelect.addEventListener('change', updateFloatingLabel);
-    }
-    updateFloatingLabel();
 
     function checkMobile() {
         const isMobile = window.innerWidth <= 1024;
         if (isMobile) {
-            publishBtn.style.display = 'none';
+            if (publishBtn) publishBtn.style.display = 'none';
             floatingContainer.style.display = 'flex';
         } else {
-            publishBtn.style.display = '';
+            if (publishBtn) publishBtn.style.display = '';
             floatingContainer.style.display = 'none';
         }
     }
 
     window.addEventListener('resize', checkMobile);
     checkMobile();
+
+    // Ctrl+S / Cmd+S save shortcut
+    window.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            if (typeof syncContentBeforeSave === 'function') {
+                syncContentBeforeSave();
+            }
+            form?.submit();
+        }
+    });
 })();
 </script>
 

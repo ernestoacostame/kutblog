@@ -33,23 +33,12 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
 $words = str_word_count(strip_tags($post['content'] ?? ''));
 $read_time = max(1, (int)ceil($words / 200));
 
-$months_es = [
-    1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr',
-    5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago',
-    9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
-];
-$days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-
 $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
 $day = date('d', $ts);
-$day_num = (int)date('j', $ts);
-$month_num = (int)date('n', $ts);
-$month_str = $months_es[$month_num] ?? date('M', $ts);
-$month_short = mb_substr($month_str, 0, 3);
+$month_short = ucfirst(month_name((int)date('n', $ts), true));
 $year = date('Y', $ts);
 $time_str = date('H:i', $ts);
-$weekday = $days_es[(int)date('w', $ts)] ?? '';
-$date_full = $day_num . ' de ' . $month_str . ', ' . $year;
+$date_full = format_date($ts, 'full');
 
 // Recent posts for sidebar timeline
 $recent_articles = function_exists('list_content') ? list_content('articles', true, 1, 6) : ['items' => []];
@@ -192,7 +181,7 @@ $recent_articles = function_exists('list_content') ? list_content('articles', tr
           }
           let html = '';
           descendants.forEach(d => {
-            const date = new Date(d.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            const date = new Date(d.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day: 'numeric', month: 'short', year: 'numeric' });
             html += `
               <div class="fediverse-comment-item">
                 <img src="${d.account.avatar_static}" alt="${d.account.display_name}" class="fedi-avatar" loading="lazy">
@@ -271,7 +260,7 @@ $recent_articles = function_exists('list_content') ? list_content('articles', tr
           <?php foreach ($recent_articles['items'] as $item):
             $i_ts = !empty($item['created_at']) ? strtotime($item['created_at']) : time();
             $i_day = date('d', $i_ts);
-            $i_month = mb_substr($months_es[(int)date('n', $i_ts)] ?? date('M', $i_ts), 0, 3);
+            $i_month = ucfirst(month_name((int)date('n', $i_ts), true));
             $is_current_post = ($item['slug'] === ($post['slug'] ?? ''));
           ?>
             <a

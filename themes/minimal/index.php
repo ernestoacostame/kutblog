@@ -58,7 +58,7 @@ $total_pages  = $posts['pages'] ?? 1;
 
     <div class="card-content">
       <div class="card-meta">
-        <time datetime="<?= $post['created_at'] ?? '' ?>"><?= date('d M, Y', strtotime($post['created_at'] ?? 'now')) ?></time>
+        <time datetime="<?= $post['created_at'] ?? '' ?>"><?= format_date($post['created_at'] ?? 'now') ?></time>
         <span class="meta-dot"></span>
         <span><?= $read_time ?> min de lectura</span>
       </div>

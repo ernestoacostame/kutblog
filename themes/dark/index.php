@@ -27,7 +27,7 @@ $heading = isset($category) ? 'Category: ' . ucfirst($category) :
     <?php endif; ?>
     <div class="post-card-body">
       <div class="post-card-meta">
-        <span class="post-date"><?= date('M j, Y', strtotime($post['created_at'] ?? 'now')) ?></span>
+        <span class="post-date"><?= format_date($post['created_at'] ?? 'now') ?></span>
         <?php if (!empty($post['categories'][0])): ?>
         <a href="<?= $base ?>/category/<?= urlencode($post['categories'][0]) ?>" class="post-category">
           <?= htmlspecialchars($post['categories'][0]) ?>

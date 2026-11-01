@@ -38,7 +38,7 @@ $count = count($results);
       <span class="item-cat"><?= htmlspecialchars($first_cat) ?></span>
       <span class="meta-dot">·</span>
       <time datetime="<?= $item['created_at'] ?? '' ?>" class="item-date">
-        <?= date('d M, Y', strtotime($item['created_at'] ?? 'now')) ?>
+        <?= format_date($item['created_at'] ?? 'now') ?>
       </time>
       <span class="meta-dot">·</span>
       <span class="item-readtime"><?= $read_time ?> min de lectura</span>

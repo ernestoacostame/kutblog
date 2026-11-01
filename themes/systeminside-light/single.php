@@ -42,11 +42,7 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
       <?php endforeach; ?>
       <span class="meta-sep">·</span>
       <time class="meta-date">
-        <?php
-        $months = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        $ts = strtotime($post['created_at'] ?? 'now');
-        echo $months[(int)date('n', $ts)] . ' ' . date('d, Y', $ts);
-        ?>
+        <?= format_date($post['created_at'] ?? 'now', 'full') ?>
       </time>
     </div>
     <?php endif; ?>
@@ -131,7 +127,7 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
       }
 
       data.comments.forEach(c => {
-        const date   = new Date(c.created_at).toLocaleDateString('es', { day:'numeric', month:'short', year:'numeric' });
+        const date   = new Date(c.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day:'numeric', month:'short', year:'numeric' });
         const depth  = Math.min(c.depth || 0, 4); // max 4 levels indent
         const indent = depth * 20;
         const div    = document.createElement('div');

@@ -1,13 +1,6 @@
 <?php
 $query = htmlspecialchars($query ?? '');
 $count = count($results ?? []);
-
-$months_es = [
-    1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr',
-    5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago',
-    9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'
-];
-$days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 ?>
 
 <div class="calendar-filter-bar">
@@ -32,9 +25,7 @@ $days_es = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'S�
       $post_url = $base . '/article/' . htmlspecialchars($post['slug']);
       $ts = !empty($post['created_at']) ? strtotime($post['created_at']) : time();
       $day = date('d', $ts);
-      $month_num = (int)date('n', $ts);
-      $month_str = $months_es[$month_num] ?? date('M', $ts);
-      $month_short = mb_substr($month_str, 0, 3);
+      $month_short = ucfirst(month_name((int)date('n', $ts), true));
       $year = date('Y', $ts);
       $first_cat = !empty($post['categories'][0]) ? $post['categories'][0] : 'General';
       $words = str_word_count(strip_tags($post['content'] ?? ''));

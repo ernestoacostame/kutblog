@@ -45,7 +45,7 @@ $read_time = max(1, (int)ceil($words / 200));
       <?php endforeach; ?>
       <span class="meta-dot">·</span>
       <time datetime="<?= $post['created_at'] ?? '' ?>" class="item-date">
-        <?= date('d M, Y', strtotime($post['created_at'] ?? 'now')) ?>
+        <?= format_date($post['created_at'] ?? 'now', 'full') ?>
       </time>
       <span class="meta-dot">·</span>
       <span class="item-readtime"><?= $read_time ?> min de lectura</span>
@@ -161,7 +161,7 @@ $read_time = max(1, (int)ceil($words / 200));
           const authorUrl = escapeHtml(author.url);
           const avatar = escapeHtml(author.avatar_static || author.avatar);
           const handle = escapeHtml(`@${author.acct}`);
-          const date = new Date(r.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+          const date = new Date(r.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day: 'numeric', month: 'short', year: 'numeric' });
           const content = r.content;
 
           return `
