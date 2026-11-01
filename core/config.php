@@ -155,11 +155,18 @@ function cms_favicon_tags(): string {
     $url = site_favicon();
     $mime = site_favicon_mime($url);
     $escapedUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+    $baseUrl = rtrim(base_url(), '/');
+
     $html = '<link rel="icon" type="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" href="' . $escapedUrl . '">' . "\n";
     if ($mime === 'image/svg+xml') {
-        $html .= '<link rel="alternate icon" href="' . $escapedUrl . '">' . "\n";
+        // In Firefox / Zen Browser, an alternate icon MUST be a raster file (ICO / PNG).
+        $icoUrl = htmlspecialchars($baseUrl . '/media/favicon/default.ico', ENT_QUOTES, 'UTF-8');
+        $pngUrl = htmlspecialchars($baseUrl . '/media/favicon/default.png', ENT_QUOTES, 'UTF-8');
+        $html .= '<link rel="alternate icon" type="image/x-icon" href="' . $icoUrl . '">' . "\n";
+        $html .= '<link rel="apple-touch-icon" href="' . $pngUrl . '">' . "\n";
+    } else {
+        $html .= '<link rel="apple-touch-icon" href="' . $escapedUrl . '">' . "\n";
     }
-    $html .= '<link rel="apple-touch-icon" href="' . $escapedUrl . '">' . "\n";
     return $html;
 }
 

@@ -24,7 +24,27 @@ $type = $segments[0] ?? '';
 $slug = $segments[1] ?? ($segments[0] ?? '');
 
 // ── Sitemap, robots & favicon ──────────────────────────────────────────────
-if ($path === 'favicon.ico' || $path === 'favicon.svg') {
+if ($path === 'favicon.ico') {
+    $config = cms_config();
+    $customFav = $config['site_favicon'] ?? '';
+    if ($customFav && str_ends_with(strtolower($customFav), '.ico')) {
+        header('Location: ' . site_favicon(), true, 302);
+        exit;
+    }
+    $icoPath = __DIR__ . '/favicon.ico';
+    if (!file_exists($icoPath)) {
+        $icoPath = __DIR__ . '/media/favicon/default.ico';
+    }
+    if (file_exists($icoPath)) {
+        header('Content-Type: image/x-icon');
+        header('Cache-Control: public, max-age=86400');
+        readfile($icoPath);
+        exit;
+    }
+    header('Location: ' . site_favicon(), true, 302);
+    exit;
+}
+if ($path === 'favicon.svg') {
     header('Location: ' . site_favicon(), true, 302);
     exit;
 }
