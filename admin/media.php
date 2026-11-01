@@ -5,6 +5,10 @@ require_once dirname(__DIR__) . '/core/theme.php';
 require_once __DIR__ . '/layout.php';
 require_login();
 
+if (cms_plugin_is_active('media-folders')) {
+    require_once ROOT_PATH . '/plugins/media-folders/media-folders.php';
+}
+
 if (!defined('MEDIA_PATH')) define('MEDIA_PATH', ROOT_PATH . '/media');
 if (!is_dir(MEDIA_PATH)) mkdir(MEDIA_PATH, 0755, true);
 
@@ -69,12 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
             'description' => $description,
         ]);
 
+        if (isset($_POST['folder_id']) && function_exists('mf_assign_file')) {
+            mf_assign_file($rel, $_POST['folder_id'] ?: null);
+        }
+
         if (!empty($_POST['ajax'])) {
             header('Content-Type: application/json');
             echo json_encode([
                 'ok' => $saved,
                 'meta' => media_get_meta($rel),
-                'renamed' => $renamedInfo
+                'renamed' => $renamedInfo,
+                'folder_id' => $_POST['folder_id'] ?? null
             ]);
             exit;
         }
@@ -108,10 +117,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
                 $filename = $clean . '-' . substr(md5(uniqid()),0,6) . '.' . $ext;
                 move_uploaded_file($file['tmp_name'], $date_dir . '/' . $filename);
                 
+                $rel_new = date('Y/m') . '/' . $filename;
+                
                 // If alt text was supplied upon upload
                 if (!empty($_POST['upload_alt'])) {
-                    $rel_new = date('Y/m') . '/' . $filename;
                     media_save_meta($rel_new, ['alt' => $_POST['upload_alt']]);
+                }
+
+                // If folder was selected upon upload
+                if (!empty($_POST['upload_folder']) && function_exists('mf_assign_file')) {
+                    mf_assign_file($rel_new, $_POST['upload_folder']);
                 }
 
                 $msg = "Subido: $filename";
@@ -144,6 +159,7 @@ foreach ($iter as $f) {
     $usedIn = $usageMap[$fn] ?? ($usageMap[$rel] ?? []);
     $isUsed = !empty($usedIn);
 
+    $folderId = function_exists('mf_get_file_folder') ? (mf_get_file_folder($rel) ?? '') : '';
     $files[] = [
         'name'    => $fn,
         'rel'     => $rel,
@@ -153,6 +169,7 @@ foreach ($iter as $f) {
         'ext'     => $ext,
         'type'    => $mt,
         'meta'    => $meta,
+        'folder'  => $folderId,
         'is_used' => $isUsed,
         'used_in' => $usedIn,
     ];
@@ -164,6 +181,11 @@ $total_size   = array_sum(array_column($files, 'size'));
 $by_type      = array_count_values(array_column($files, 'type'));
 $used_count   = count(array_filter($files, fn($f) => !empty($f['is_used'])));
 $unused_count = count(array_filter($files, fn($f) => empty($f['is_used'])));
+
+// Media Folders Plugin Data
+$mf_active = cms_plugin_is_active('media-folders');
+$mf_counts = ($mf_active && function_exists('mf_get_counts')) ? mf_get_counts($files) : [];
+$mf_tree   = ($mf_active && function_exists('mf_get_tree')) ? mf_get_tree() : [];
 
 // Filter
 $filter = $_GET['type'] ?? 'all';
@@ -201,7 +223,72 @@ admin_header(__("media_title"), 'media');
 
     <form id="upload-form" method="POST" enctype="multipart/form-data" style="display:none">
       <input type="hidden" name="csrf" value="<?= $csrf ?>">
+      <input type="hidden" name="upload_folder" id="upload-form-folder" value="">
     </form>
+
+    <?php if ($mf_active): ?>
+    <div class="media-folders-wrapper">
+      <aside class="media-folders-pane">
+        <div class="media-folders-header">
+          <span class="media-folders-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Carpetas
+          </span>
+          <button type="button" class="btn btn-xs btn-primary" onclick="openNewFolderModal()" title="Crear nueva carpeta">+ Nueva</button>
+        </div>
+
+        <div class="media-folders-list" id="media-folders-tree">
+          <div class="media-folder-row is-active" data-folder-id="all" onclick="filterByFolder('all', this)">
+            <span class="mf-icon">📁</span>
+            <span class="mf-name">Todos</span>
+            <span class="mf-count" id="mf-cnt-all"><?= count($files) ?></span>
+          </div>
+          <div class="media-folder-row" data-folder-id="unassigned" onclick="filterByFolder('unassigned', this)">
+            <span class="mf-icon">📂</span>
+            <span class="mf-name">Sin carpeta</span>
+            <span class="mf-count" id="mf-cnt-unassigned"><?= $mf_counts['_unassigned'] ?? 0 ?></span>
+          </div>
+          <div class="media-folder-divider"></div>
+          <?php
+          if (!function_exists('render_media_sidebar_tree')) {
+              function render_media_sidebar_tree(array $tree, array $counts, int $depth = 0) {
+                  foreach ($tree as $folder) {
+                      $fId = $folder['id'];
+                      $cnt = $counts[$fId] ?? 0;
+                      ?>
+                      <div class="media-folder-row mf-user-folder" data-folder-id="<?= htmlspecialchars($fId) ?>" data-depth="<?= $depth ?>" style="padding-left:<?= 0.65 + ($depth * 1.1) ?>rem" onclick="filterByFolder('<?= htmlspecialchars($fId) ?>', this)">
+                        <span class="mf-icon">📁</span>
+                        <span class="mf-name" title="<?= htmlspecialchars($folder['name']) ?>"><?= htmlspecialchars($folder['name']) ?></span>
+                        <span class="mf-count" id="mf-cnt-<?= htmlspecialchars($fId) ?>"><?= $cnt ?></span>
+                        <div class="mf-actions" onclick="event.stopPropagation()">
+                          <button type="button" class="mf-act-btn" onclick="openNewFolderModal('<?= htmlspecialchars($fId) ?>', '<?= htmlspecialchars(addslashes($folder['name'])) ?>')" title="Crear subcarpeta">＋</button>
+                          <button type="button" class="mf-act-btn" onclick="renameFolderPrompt('<?= htmlspecialchars($fId) ?>', '<?= htmlspecialchars(addslashes($folder['name'])) ?>')" title="Renombrar">✎</button>
+                          <button type="button" class="mf-act-btn mf-del" onclick="deleteFolderPrompt('<?= htmlspecialchars($fId) ?>', '<?= htmlspecialchars(addslashes($folder['name'])) ?>')" title="Eliminar">✕</button>
+                        </div>
+                      </div>
+                      <?php
+                      if (!empty($folder['children'])) {
+                          render_media_sidebar_tree($folder['children'], $counts, $depth + 1);
+                      }
+                  }
+              }
+          }
+          if (!empty($mf_tree)) {
+              render_media_sidebar_tree($mf_tree, $mf_counts);
+          }
+          ?>
+        </div>
+      </aside>
+      <div class="media-main-pane">
+        <div id="media-folder-banner" class="media-folder-banner" style="display:none;align-items:center;justify-content:space-between;padding:0.6rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem">
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span style="font-size:0.85rem;color:var(--muted)">Carpeta:</span>
+            <strong id="active-folder-label" style="color:var(--text);font-size:0.95rem">—</strong>
+            <span id="active-folder-count-badge" class="badge" style="background:var(--accent-light, rgba(239,68,68,0.12));color:var(--accent);font-size:0.75rem;padding:2px 8px;border-radius:10px;font-weight:700">0</span>
+          </div>
+          <button type="button" class="btn btn-xs btn-secondary" onclick="filterByFolder('all')">✕ Ver todos</button>
+        </div>
+    <?php endif; ?>
 
     <!-- Filter tabs & Stats (quireINK style) -->
     <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
@@ -241,12 +328,15 @@ admin_header(__("media_title"), 'media');
            data-name="<?= htmlspecialchars($f['name']) ?>"
            data-url="<?= htmlspecialchars($f['url']) ?>"
            data-type="<?= $f['type'] ?>"
+           data-folder="<?= htmlspecialchars($f['folder'] ?? '') ?>"
            data-size="<?= round($f['size']/1024) ?> KB"
            data-date="<?= date('Y-m-d H:i', $f['time']) ?>"
            data-alt="<?= htmlspecialchars($f['meta']['alt'] ?? '') ?>"
            data-title="<?= htmlspecialchars($f['meta']['title'] ?? '') ?>"
            data-caption="<?= htmlspecialchars($f['meta']['caption'] ?? '') ?>"
            data-description="<?= htmlspecialchars($f['meta']['description'] ?? '') ?>"
+           draggable="true"
+           ondragstart="handleMediaDragStart(event, this)"
            onclick="openMediaModal(this)">
         <div class="media-thumb">
 
@@ -312,6 +402,10 @@ admin_header(__("media_title"), 'media');
       <?php endforeach; ?>
     </div>
     <?php endif; ?>
+    <?php if ($mf_active): ?>
+      </div><!-- /.media-main-pane -->
+    </div><!-- /.media-folders-wrapper -->
+    <?php endif; ?>
 
     <!-- Media Inspector Modal -->
     <div id="media-modal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeMediaModal()">
@@ -373,6 +467,18 @@ admin_header(__("media_title"), 'media');
                 Puedes renombrar el archivo en el servidor. La extensión original se conserva de forma segura.
               </small>
             </div>
+
+            <?php if ($mf_active && function_exists('mf_render_folder_options')): ?>
+            <div class="form-group" style="margin-bottom:1.15rem">
+              <label for="modal-input-folder" class="form-label" style="font-weight:700">
+                Carpeta
+              </label>
+              <select id="modal-input-folder" name="folder_id" class="form-control" style="font-size:0.95rem">
+                <option value="">(Sin carpeta / Raíz)</option>
+                <?= mf_render_folder_options() ?>
+              </select>
+            </div>
+            <?php endif; ?>
 
             <div class="form-group" style="margin-bottom:1.15rem">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
@@ -543,6 +649,141 @@ admin_header(__("media_title"), 'media');
   padding: 0.35rem 0.5rem; border-radius: 8px; transition: background 0.15s;
 }
 .modal-close-btn:hover { background: var(--surface2); color: var(--text); }
+
+/* Media Folders Layout */
+.media-folders-wrapper {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+}
+.media-folders-pane {
+  width: 250px;
+  min-width: 250px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  position: sticky;
+  top: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.media-folders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.media-folders-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.media-folders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.media-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--text);
+  transition: all 0.15s ease;
+  position: relative;
+  user-select: none;
+}
+.media-folder-row:hover {
+  background: var(--surface2);
+}
+.media-folder-row.is-active {
+  background: var(--accent-light, rgba(239,68,68,0.1));
+  color: var(--accent);
+  font-weight: 600;
+}
+.media-folder-row.drag-over {
+  outline: 2px dashed var(--accent);
+  background: var(--accent-light, rgba(239,68,68,0.15));
+  transform: scale(1.02);
+}
+.media-folder-row .mf-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.media-folder-row .mf-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-folder-row .mf-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  background: var(--surface2);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.media-folder-row.is-active .mf-count {
+  background: rgba(239,68,68,0.2);
+  color: var(--accent);
+}
+.media-folder-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.4rem 0;
+}
+.mf-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+.media-folder-row:hover .mf-actions {
+  display: flex;
+}
+.mf-act-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.mf-act-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.mf-act-btn.mf-del:hover {
+  color: var(--red, #ef4444);
+}
+.media-main-pane {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 860px) {
+  .media-folders-wrapper {
+    flex-direction: column;
+  }
+  .media-folders-pane {
+    width: 100%;
+    position: static;
+  }
+}
 </style>
 
 <script>
@@ -595,6 +836,10 @@ function openMediaModal(itemEl) {
   document.getElementById('modal-input-title').value = title;
   document.getElementById('modal-input-caption').value = caption;
   document.getElementById('modal-input-description').value = description;
+
+  const folder = itemEl.dataset.folder || '';
+  const folderInput = document.getElementById('modal-input-folder');
+  if (folderInput) folderInput.value = folder;
 
   const container = document.getElementById('modal-preview-container');
   container.innerHTML = '';
@@ -666,6 +911,12 @@ function saveMediaMetadata(e) {
         currentModalItem.dataset.title = data.meta.title || '';
         currentModalItem.dataset.caption = data.meta.caption || '';
         currentModalItem.dataset.description = data.meta.description || '';
+        if (data.folder_id !== undefined) {
+          currentModalItem.dataset.folder = data.folder_id || '';
+          if (typeof updateFolderCountsFromDOM === 'function') {
+            updateFolderCountsFromDOM();
+          }
+        }
 
         // Update badge
         const thumb = currentModalItem.querySelector('.media-thumb');
@@ -721,6 +972,207 @@ function copyModalHtml() {
   navigator.clipboard.writeText(html).then(() => {
     showToast('✓ HTML copiado al portapapeles');
   });
+}
+
+let currentActiveFolderId = 'all';
+
+function filterByFolder(folderId, rowEl) {
+  currentActiveFolderId = folderId;
+
+  document.querySelectorAll('.media-folder-row').forEach(r => {
+    r.classList.toggle('is-active', r.dataset.folderId === folderId);
+  });
+
+  const upFolderInput = document.getElementById('upload-form-folder');
+  if (upFolderInput) {
+    upFolderInput.value = (folderId === 'all' || folderId === 'unassigned') ? '' : folderId;
+  }
+
+  const banner = document.getElementById('media-folder-banner');
+  const label = document.getElementById('active-folder-label');
+  const badge = document.getElementById('active-folder-count-badge');
+
+  let visibleCount = 0;
+  let folderName = 'Todos';
+
+  if (rowEl) {
+    folderName = rowEl.querySelector('.mf-name')?.textContent || folderId;
+  } else {
+    const activeRow = document.querySelector(`.media-folder-row[data-folder-id="${folderId}"]`);
+    if (activeRow) folderName = activeRow.querySelector('.mf-name')?.textContent || folderId;
+  }
+
+  if (banner && label) {
+    if (folderId === 'all') {
+      banner.style.display = 'none';
+    } else {
+      label.textContent = folderName;
+      banner.style.display = 'flex';
+    }
+  }
+
+  const items = document.querySelectorAll('.media-grid .media-item');
+  items.forEach(it => {
+    const itFolder = it.dataset.folder || '';
+    let matches = false;
+    if (folderId === 'all') {
+      matches = true;
+    } else if (folderId === 'unassigned') {
+      matches = (itFolder === '');
+    } else {
+      matches = (itFolder === folderId);
+    }
+    it.style.display = matches ? '' : 'none';
+    if (matches) visibleCount++;
+  });
+
+  if (badge) badge.textContent = visibleCount;
+}
+
+function handleMediaDragStart(e, itemEl) {
+  e.dataTransfer.setData('text/plain', itemEl.dataset.rel);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.media-folder-row').forEach(row => {
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const rel = e.dataTransfer.getData('text/plain');
+      if (!rel) return;
+
+      const targetFolderId = row.dataset.folderId;
+      const actualFolderId = (targetFolderId === 'all' || targetFolderId === 'unassigned') ? '' : targetFolderId;
+
+      const fd = new FormData();
+      fd.append('action', 'move_file');
+      fd.append('file', rel);
+      fd.append('folder_id', actualFolderId);
+      fd.append('csrf', <?= json_encode($csrf) ?>);
+
+      try {
+        const res = await fetch('<?= base_url() ?>/plugins/media-folders/api.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          const item = document.querySelector(`.media-item[data-rel="${CSS.escape(rel)}"]`);
+          if (item) {
+            item.dataset.folder = actualFolderId;
+            if (currentActiveFolderId !== 'all') {
+              if (currentActiveFolderId === 'unassigned' && actualFolderId !== '') {
+                item.style.display = 'none';
+              } else if (currentActiveFolderId !== 'unassigned' && actualFolderId !== currentActiveFolderId) {
+                item.style.display = 'none';
+              }
+            }
+          }
+          updateFolderCountsFromDOM();
+          showToast('✓ Archivo movido a la carpeta');
+        } else {
+          alert(data.error || 'No se pudo mover el archivo');
+        }
+      } catch(err) {
+        alert('Error de conexión al mover archivo');
+      }
+    });
+  });
+});
+
+function updateFolderCountsFromDOM() {
+  const counts = { all: 0, unassigned: 0 };
+  document.querySelectorAll('.media-grid .media-item').forEach(it => {
+    counts.all++;
+    const fId = it.dataset.folder || '';
+    if (!fId) counts.unassigned++;
+    else counts[fId] = (counts[fId] || 0) + 1;
+  });
+
+  const cntAll = document.getElementById('mf-cnt-all');
+  if (cntAll) cntAll.textContent = counts.all;
+  const cntUn = document.getElementById('mf-cnt-unassigned');
+  if (cntUn) cntUn.textContent = counts.unassigned;
+
+  document.querySelectorAll('.media-folder-row.mf-user-folder').forEach(r => {
+    const fId = r.dataset.folderId;
+    const cntEl = document.getElementById('mf-cnt-' + fId);
+    if (cntEl) cntEl.textContent = counts[fId] || 0;
+  });
+}
+
+async function openNewFolderModal(parentId = null, parentName = '') {
+  const promptMsg = parentName ? `Nombre para la subcarpeta en "${parentName}":` : 'Nombre de la nueva carpeta:';
+  const name = prompt(promptMsg);
+  if (!name || name.trim() === '') return;
+
+  const fd = new FormData();
+  fd.append('action', 'create_folder');
+  fd.append('name', name.trim());
+  if (parentId) fd.append('parent_id', parentId);
+  fd.append('csrf', <?= json_encode($csrf) ?>);
+
+  try {
+    const res = await fetch('<?= base_url() ?>/plugins/media-folders/api.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert(data.error || 'Error al crear la carpeta');
+    }
+  } catch(e) {
+    alert('Error al conectar con el servidor');
+  }
+}
+
+async function renameFolderPrompt(id, currentName) {
+  const newName = prompt('Nuevo nombre para la carpeta:', currentName);
+  if (!newName || newName.trim() === '') return;
+
+  const fd = new FormData();
+  fd.append('action', 'rename_folder');
+  fd.append('id', id);
+  fd.append('name', newName.trim());
+  fd.append('csrf', <?= json_encode($csrf) ?>);
+
+  try {
+    const res = await fetch('<?= base_url() ?>/plugins/media-folders/api.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert(data.error || 'Error al renombrar');
+    }
+  } catch(e) {
+    alert('Error de conexión');
+  }
+}
+
+async function deleteFolderPrompt(id, name) {
+  if (!confirm(`¿Eliminar la carpeta "${name}"?\n(Los archivos permanecerán en la biblioteca)`)) return;
+
+  const fd = new FormData();
+  fd.append('action', 'delete_folder');
+  fd.append('id', id);
+  fd.append('csrf', <?= json_encode($csrf) ?>);
+
+  try {
+    const res = await fetch('<?= base_url() ?>/plugins/media-folders/api.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      location.reload();
+    } else {
+      alert(data.error || 'Error al eliminar');
+    }
+  } catch(e) {
+    alert('Error de conexión');
+  }
 }
 
 // ESC closes modal

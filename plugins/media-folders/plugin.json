@@ -1,0 +1,7 @@
+{
+  "id": "media-folders",
+  "name": "Carpetas Multimedia",
+  "description": "Organización avanzada de la biblioteca multimedia mediante carpetas y subcarpetas virtuales sin alterar las rutas ni romper las URLs públicas de tus archivos.",
+  "version": "1.0",
+  "author": "KutBlog"
+}
