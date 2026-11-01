@@ -2,13 +2,13 @@
 
 **KutBlog** es un gestor de contenidos ligero, rápido y sin base de datos, escrito en PHP puro. Almacena todo el contenido en archivos JSON, no requiere MySQL ni PostgreSQL, y es fácil de instalar en cualquier servidor con PHP 8.0+.
 
-<img width="2440" height="1208" alt="kutblog_dashboard" src="https://github.com/user-attachments/assets/40a75b05-450d-47ff-aeed-628c528a2543" />
+<img width="2250" height="1369" alt="kutblog_theme" src="https://github.com/user-attachments/assets/f7979547-cbcb-48ba-bbfb-db9e1827a6de" />
 
-<img width="2419" height="1207" alt="kutblog_editor" src="https://github.com/user-attachments/assets/da5405ec-fc92-4842-9ac2-b3df1417ad1f" />
+<img width="2250" height="1369" alt="kutblog_stats" src="https://github.com/user-attachments/assets/9b6d6795-b093-47bf-9bf6-185d2fad942a" />
 
-<img width="2426" height="1208" alt="kutblog_default" src="https://github.com/user-attachments/assets/f49b4a42-4acd-4250-831e-ebe3242849cf" />
+<img width="2250" height="1369" alt="kutblog_editor" src="https://github.com/user-attachments/assets/6868791d-5a8d-4352-b30a-38eb183d702f" />
 
-<img width="2426" height="1210" alt="kutblog_systeminside" src="https://github.com/user-attachments/assets/d2b72f74-6c2f-4026-9bc3-eb7b7a8399b4" />
+<img width="2250" height="1369" alt="kutblog_admin" src="https://github.com/user-attachments/assets/5561a532-b4ab-4579-b34c-8d4f7d887d43" />
 
 ---
 

@@ -176,3 +176,4 @@ switch ($action) {
         echo json_encode(['ok' => false, 'error' => 'Acción no reconocida']);
         exit;
 }
+

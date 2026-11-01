@@ -922,3 +922,4 @@ function series_render_detail_page(array $series): void {
     $footer_file = theme_file('footer.php');
     if (file_exists($footer_file)) include $footer_file;
 }
+
