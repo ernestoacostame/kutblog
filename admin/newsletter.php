@@ -7,6 +7,11 @@ require_once dirname(__DIR__) . '/core/theme.php';
 require_once __DIR__ . '/layout.php';
 require_login();
 
+if (!cms_plugin_is_active('newsletter')) {
+    header('Location: ' . base_url() . '/admin/plugins.php');
+    exit;
+}
+
 $csrf = generate_csrf();
 $tab = in_array($_GET['tab'] ?? '', ['subscribers', 'send', 'smtp']) ? $_GET['tab'] : 'subscribers';
 $msg = '';

@@ -88,11 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Envío de Newsletter al publicar de inmediato (los programados se enviarán al llegar la fecha)
-                if ($post['status'] === 'published' && !empty($_POST['newsletter_broadcast'])) {
+                if (cms_plugin_is_active('newsletter') && $post['status'] === 'published' && !empty($_POST['newsletter_broadcast'])) {
                     require_once dirname(__DIR__) . '/core/newsletter.php';
-                    $nRes = newsletter_broadcast_post($post, !empty($_POST['newsletter_resend']));
-                    if (!empty($nRes['sent'])) {
-                        $msg .= ' · Boletín enviado a ' . $nRes['sent'] . ' suscriptores';
+                    if (function_exists('newsletter_broadcast_post')) {
+                        $nRes = newsletter_broadcast_post($post, !empty($_POST['newsletter_resend']));
+                        if (!empty($nRes['sent'])) {
+                            $msg .= ' · Boletín enviado a ' . $nRes['sent'] . ' suscriptores';
+                        }
                     }
                 }
             }
@@ -688,9 +690,9 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
           </div>
           <?php endif; endif; ?>
 
-          <?php if ($type === 'articles'): 
+          <?php if ($type === 'articles' && cms_plugin_is_active('newsletter')): 
               require_once dirname(__DIR__) . '/core/newsletter.php';
-              $newsSubs = newsletter_get_subscribers();
+              $newsSubs = function_exists('newsletter_get_subscribers') ? newsletter_get_subscribers() : [];
               $activeSubsCount = count(array_filter($newsSubs, fn($s) => ($s['status'] ?? '') === 'confirmed'));
               $newsSentAt = $post['newsletter_sent_at'] ?? '';
           ?>

@@ -1,0 +1,7 @@
+{
+  "id": "newsletter",
+  "name": "Newsletter",
+  "description": "Boletín de suscripciones por correo electrónico. Permite a los lectores suscribirse con doble confirmación (opt-in), gestionar suscriptores y enviar publicaciones automáticamente por email.",
+  "version": "1.0",
+  "author": "KutBlog"
+}

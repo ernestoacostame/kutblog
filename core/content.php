@@ -288,8 +288,8 @@ function check_scheduled_posts(): void {
                 }
             }
 
-            // Trigger Newsletter si estaba configurado
-            if (!empty($post['newsletter_broadcast'])) {
+            // Trigger Newsletter si estaba configurado y el plugin está activo
+            if (cms_plugin_is_active('newsletter') && !empty($post['newsletter_broadcast'])) {
                 require_once dirname(__DIR__) . '/core/newsletter.php';
                 if (function_exists('newsletter_broadcast_post')) {
                     newsletter_broadcast_post($post, false);

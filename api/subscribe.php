@@ -5,6 +5,17 @@ require_once dirname(__DIR__) . '/core/config.php';
 require_once dirname(__DIR__) . '/core/content.php';
 require_once dirname(__DIR__) . '/core/newsletter.php';
 
+if (!cms_plugin_is_active('newsletter')) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(404);
+        echo json_encode(['ok' => false, 'error' => 'El plugin de Newsletter no está activo.']);
+        exit;
+    }
+    render_notice_page('Servicio no disponible', '✉️', 'El boletín de noticias no se encuentra disponible actualmente.');
+    exit;
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Helper to render a standalone notification page

@@ -493,10 +493,12 @@ body.scheme-light .floating-publish-btn {
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span class="nav-label">Estadísticas</span>
     </a>
+    <?php if (cms_plugin_is_active('newsletter')): ?>
     <a href="<?= base_url() ?>/admin/newsletter.php" class="nav-item <?= $active === 'newsletter' ? 'active' : '' ?>" data-label="Newsletter">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       <span class="nav-label">Newsletter</span>
     </a>
+    <?php endif; ?>
 
     <div class="nav-section">Herramientas</div>
     <?php if (cms_plugin_is_active('wp-import')): ?>

@@ -3,7 +3,8 @@
         "fediverse",
         "wp-import",
         "kutpod",
-        "search-replace"
+        "search-replace",
+        "newsletter"
     ],
     "fediverse_username": "blog_test"
 }
