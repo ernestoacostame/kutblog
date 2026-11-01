@@ -1,6 +1,6 @@
 # KutBlog
 
-**KutBlog** es un gestor de contenidos ligero, rápido y sin base de datos, escrito en PHP puro. Almacena todo el contenido en archivos JSON, no requiere MySQL ni PostgreSQL, y es fácil de instalar en cualquier servidor con PHP 8.0+.
+**KutBlog** es un gestor de contenidos moderno, ligero, modular y sin base de datos, escrito en PHP puro. Almacena todo el contenido y configuraciones en archivos estructurados (JSON y Markdown), no requiere MySQL ni PostgreSQL, e incluye un potente sistema de plugins, analíticas respetuosas con la privacidad y una experiencia editorial fluida y sin fricciones.
 
 <img width="2250" height="1369" alt="kutblog_theme" src="https://github.com/user-attachments/assets/f7979547-cbcb-48ba-bbfb-db9e1827a6de" />
 
@@ -16,32 +16,38 @@
 
 1. [Requisitos](#requisitos)
 2. [Instalación](#instalación)
-3. [Estructura de archivos](#estructura-de-archivos)
+3. [Estructura de archivos y directorios](#estructura-de-archivos-y-directorios)
 4. [Panel de administración](#panel-de-administración)
-5. [Artículos y Páginas](#artículos-y-páginas)
-6. [Editor de contenido](#editor-de-contenido)
-7. [Media](#media)
-8. [Importar desde WordPress](#importar-desde-wordpress)
-9. [Temas](#temas)
-10. [Ajustes del sitio](#ajustes-del-sitio)
-11. [Mastodon y redes sociales](#mastodon-y-redes-sociales)
-12. [RSS, Sitemap y SEO](#rss-sitemap-y-seo)
-13. [Herramientas](#herramientas)
+5. [Artículos, Páginas y Calendario](#artículos-páginas-y-calendario)
+6. [Editor de contenido triple-modo](#editor-de-contenido-triple-modo)
+7. [Biblioteca de medios y carpetas virtuales](#biblioteca-de-medios-y-carpetas-virtuales)
+8. [Sistema de plugins](#sistema-de-plugins)
+   - [Series de artículos](#plugin-series-de-artículos)
+   - [Carpetas multimedia](#plugin-carpetas-multimedia)
+   - [Newsletter y suscripciones](#plugin-newsletter)
+   - [Fediverso y ActivityPub](#plugin-fediverso-activitypub)
+   - [KutPod Studio (Podcasts)](#plugin-kutpod-studio)
+   - [Búsqueda y reemplazo](#plugin-búsqueda-y-reemplazo)
+   - [Importador de WordPress](#plugin-importador-de-wordpress)
+9. [Catálogo de temas](#catálogo-de-temas)
+10. [Ajustes del sitio y favicon](#ajustes-del-sitio-y-favicon)
+11. [Estadísticas integradas (sin cookies)](#estadísticas-integradas-sin-cookies)
+12. [Mastodon y comentarios sociales](#mastodon-y-comentarios-sociales)
+13. [RSS, Sitemap y SEO](#rss-sitemap-y-seo)
 14. [Exportar y respaldar](#exportar-y-respaldar)
-15. [Nginx](#nginx)
+15. [Configuración de Nginx](#configuración-de-nginx)
 16. [Seguridad](#seguridad)
 17. [Crear un tema personalizado](#crear-un-tema-personalizado)
 18. [Estructura del contenido JSON](#estructura-del-contenido-json)
 19. [Solución de problemas](#solución-de-problemas)
-20. [Estadísticas: opciones disponibles](#estadísticas-opciones-disponibles)
 
 ---
 
 ## Requisitos
 
-- **PHP 8.0 o superior**
-- **Nginx** (recomendado) o **Apache** con mod_rewrite
-- Extensiones PHP: `json`, `SimpleXML`, `fileinfo`, `zip`
+- **PHP 8.0 o superior** (probado y optimizado en PHP 8.1, 8.2 y 8.3)
+- **Nginx** (recomendado) o **Apache** con `mod_rewrite`
+- Extensiones PHP requeridas: `json`, `SimpleXML`, `fileinfo`, `zip`, `gd` (para procesamiento de imágenes y favicon)
 - Acceso de escritura a `content/`, `cache/`, `media/` y al archivo `config.json`
 
 ---
@@ -50,13 +56,13 @@
 
 ### 1. Subir los archivos
 
-Sube todos los archivos de KutBlog al directorio raíz de tu servidor web:
+Sube los archivos de KutBlog al directorio raíz de tu servidor web:
 
-```
+```bash
 /var/www/html/misitio/
 ```
 
-### 2. Permisos
+### 2. Permisos del sistema
 
 ```bash
 chown -R www-data:www-data /var/www/html/misitio/
@@ -71,625 +77,433 @@ chmod 664 /var/www/html/misitio/config.json
 
 ### 3. Configurar Nginx
 
-El archivo `nginx.conf.example` incluido en el ZIP es una plantilla lista para usar. Cópialo y ajusta los valores marcados con `<CAMBIAR>`:
+Utiliza la plantilla `nginx.conf.example` o `systeminside.conf` incluida. Ajusta tu dominio y la ruta al socket de PHP-FPM:
 
 ```nginx
 server_name tudominio.com www.tudominio.com;
 root /var/www/html/misitio;
-fastcgi_pass unix:/run/php/php8.3-fpm.sock;  # ajusta la versión de PHP
+fastcgi_pass unix:/run/php/php8.3-fpm.sock;
 ```
 
-Activa el sitio:
+Activa el sitio en tu servidor:
 
 ```bash
-# Copiar y renombrar la plantilla
 cp nginx.conf.example /etc/nginx/sites-available/tudominio.conf
-
-# Editar y cambiar todos los valores marcados <CAMBIAR>
 nano /etc/nginx/sites-available/tudominio.conf
-
-# Activar el sitio
 ln -sf /etc/nginx/sites-available/tudominio.conf /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 ```
 
-### 4. Certificado SSL
+### 4. Certificado SSL con Let's Encrypt
 
 ```bash
 certbot certonly --nginx -d tudominio.com -d www.tudominio.com
 ```
 
-Actualiza las líneas `ssl_certificate` en el vhost para apuntar al nuevo certificado y recarga Nginx.
-
 ### 5. Instalador web
 
-Abre `https://tudominio.com/install/` en el navegador y rellena:
+Abre `https://tudominio.com/install/` en el navegador y completa:
+- **Título del sitio:** Nombre de tu publicación o bitácora.
+- **URL base:** Detectada automáticamente (ej. `https://tudominio.com`).
+- **Usuario administrador:** Nombre de login.
+- **Contraseña:** Mínimo 8 caracteres, mayúscula y número.
 
-- **Título del sitio** — nombre de tu blog
-- **URL base** — se detecta automáticamente
-- **Usuario administrador** — nombre de login
-- **Contraseña** — mínimo 8 caracteres, una mayúscula y un número
-
-El instalador crea `config.json`, las carpetas necesarias y contenido de ejemplo. El archivo `.installed` en la raíz desactiva el instalador permanentemente.
+El instalador genera `config.json`, la estructura base y crea el archivo `.installed` que bloquea permanentemente el instalador por seguridad.
 
 ---
 
-## Estructura de archivos
+## Estructura de archivos y directorios
 
 ```
 /
-├── index.php               ← Router principal
-├── config.json             ← Configuración (generado al instalar)
-├── .installed              ← Marca que la instalación está completa
-├── rss.xml.php             ← Generador del feed RSS
-├── sitemap.xml.php         ← Generador del sitemap XML
+├── index.php                 ← Enrutador público principal (Home, artículos, páginas, series, podcast)
+├── config.json               ← Configuración global y plugins activos
+├── .installed                ← Bloqueo de seguridad del instalador
+├── rss.xml.php               ← Generador del feed RSS 2.0
+├── sitemap.xml.php           ← Generador del sitemap XML dinámico
+├── favicon.ico / .svg        ← Favicon público con redirección dinámica
 │
-├── admin/                  ← Panel de administración
-│   ├── index.php           ← Dashboard
-│   ├── editor.php          ← Editor de artículos y páginas
-│   ├── articles.php        ← Listado de artículos
-│   ├── pages.php           ← Listado de páginas
-│   ├── media.php           ← Gestor de imágenes
-│   ├── import.php          ← Importar desde WordPress
-│   ├── import_images.php   ← Descargar imágenes externas
-│   ├── export.php          ← Exportar contenido
-│   ├── search_replace.php  ← Buscar y reemplazar en contenido
-│   ├── settings.php        ← Ajustes del sitio
-│   └── themes.php          ← Gestión de temas
+├── admin/                    ← Panel de control administrativo
+│   ├── index.php             ← Dashboard principal con resumen y accesos rápidos
+│   ├── editor.php            ← Editor de contenido triple-modo (WYSIWYG / RAW / Markdown)
+│   ├── articles.php          ← Listado, filtrado y gestión de artículos
+│   ├── pages.php             ← Listado y gestión de páginas estáticas
+│   ├── calendar.php          ← Calendario editorial interactivo con programación de posts
+│   ├── media.php             ← Biblioteca multimedia con árbol de carpetas virtuales y drag & drop
+│   ├── analytics.php         ← Estadísticas de visitas, dispositivos, países y fuentes
+│   ├── trash.php             ← Papelera de reciclaje y recuperación de contenidos
+│   ├── plugins.php           ← Gestor y configuración de plugins
+│   ├── themes.php            ← Selector y personalización de temas
+│   ├── settings.php          ← Ajustes generales, apariencia, favicon y perfiles
+│   ├── users.php             ← Gestión de credenciales de usuario
+│   ├── autosave.php          ← Endpoint de autoguardado en segundo plano
+│   └── export.php            ← Copias de seguridad completas en ZIP
 │
-├── plugins/                ← Sistema de plugins
-│   ├── fediverse/          ← Integración con Fediverso / ActivityPub
-│   └── wp-import/          ← Importador de WordPress (WXR) y gestor de imágenes externas
+├── plugins/                  ← Sistema de plugins desacoplados
+│   ├── series/               ← Series de artículos, entregas ordenadas y páginas dedicadas
+│   ├── media-folders/        ← Carpetas y taxonomía virtual para la biblioteca de medios
+│   ├── newsletter/           ← Suscripciones por email con doble opt-in y boletines
+│   ├── fediverse/            ← Nodo nativo de ActivityPub para el Fediverso (Mastodon)
+│   ├── kutpod/               ← Integración oficial con podcasts de KutPod Studio
+│   ├── search-replace/       ← Búsqueda y reemplazo masivo con simulación
+│   └── wp-import/            ← Importador de archivos WXR (.xml) de WordPress
 │
-├── core/                   ← Lógica interna (no accesible públicamente)
-│   ├── config.php          ← Constantes y funciones de configuración
-│   ├── auth.php            ← Autenticación y seguridad
-│   ├── content.php         ← CRUD de artículos y páginas
-│   ├── markdown.php        ← Parser Markdown puro PHP
-│   └── theme.php           ← Motor de temas
+├── core/                     ← Núcleo del sistema (bloqueado al acceso web)
+│   ├── config.php            ← Carga de ajustes, helpers de lenguaje y plugins
+│   ├── auth.php              ← Sesiones seguras, CSRF, control de acceso y Argon2id
+│   ├── content.php           ← CRUD de artículos, páginas y caché de índices
+│   ├── markdown.php          ← Parser Markdown nativo PHP de alta velocidad
+│   └── theme.php             ← Motor de plantillas, inyección de estilos y hooks
 │
-├── content/                ← TODO TU CONTENIDO (respaldar esto)
-│   ├── articles/           ← Artículos en formato JSON
-│   └── pages/              ← Páginas en formato JSON
+├── content/                  ← TUS DATOS (Directorio prioritario de respaldo)
+│   ├── articles/             ← Archivos JSON de cada artículo
+│   ├── pages/                ← Archivos JSON de cada página
+│   ├── users/                ← Usuarios y contraseñas hasheadas
+│   ├── cache/                ← Caché temporal de consultas, índices y Mastodon
+│   ├── newsletter/           ← Suscriptores y registros del boletín
+│   ├── series.json           ← Metadatos de colecciones y series de artículos
+│   ├── media_folders.json    ← Estructura de carpetas virtuales de multimedia
+│   └── fediverse.db          ← Base de datos SQLite ligera para seguidores y actores
 │
-├── media/                  ← Imágenes subidas e importadas (respaldar esto)
-├── cache/                  ← Caché temporal (se puede borrar sin problema)
+├── media/                    ← Archivos multimedia subidos (/media/YYYY/MM/)
 │
-├── themes/                 ← Temas disponibles
-│   ├── systeminside/       ← Header oscuro, fondo claro, sidebar
-│   ├── systeminside-dark/  ← Completamente oscuro
-│   ├── systeminside-light/ ← Completamente claro
-│   ├── default/            ← Tema claro minimalista con tarjetas
-│   └── dark/               ← Tema oscuro minimalista con tarjetas
+├── themes/                   ← Temas visuales listos para usar
+│   ├── default/              ← Tema claro editorial en cuadrícula
+│   ├── dark/                 ← Tema oscuro moderno en cuadrícula
+│   ├── minimal/              ← Minimalista amplio, thumbnail-first con modo claro/oscuro
+│   ├── minimal-column/       ← Diseño a una sola columna, tipografía cuidada y lectura inmersiva
+│   ├── calendar/             ← 2 columnas con timeline y calendario interactivo al scroll
+│   ├── systeminside/         ← Cabecera oscura, barra lateral clásica y tipografía condensada
+│   ├── systeminside-dark/    ← Versión 100% oscura de SystemInside para lectura nocturna
+│   └── systeminside-light/   ← Versión 100% clara de SystemInside
 │
-└── api/
-    └── mastodon.php        ← Proxy para comentarios de Mastodon
+└── api/                      ← Endpoints públicos ligeros
+    ├── mastodon.php          ← Proxy de comentarios y respuestas de Mastodon
+    ├── track.php             ← Beacon de analíticas privadas sin cookies
+    ├── subscribe.php         ← Suscripción a newsletter y confirmación opt-in
+    └── img.php               ← Optimización dinámica y caché de imágenes
 ```
 
 ---
 
 ## Panel de administración
 
-Accede en: `https://tudominio.com/admin/`
+Acceso: `https://tudominio.com/admin/`
 
-### Barra lateral
-
-- **Colapsar (escritorio):** clic en el botón ☰ del header del sidebar. Solo iconos en modo colapsado, tooltip al pasar el cursor. Estado guardado en localStorage.
-- **Móvil:** la barra se oculta. Botón ☰ en la topbar la abre como panel deslizante.
-
-### Esquemas de color del panel
-
-Cuatro puntos de colores en la topbar derecha:
-
-| Esquema | Descripción |
-|---------|-------------|
-| Dark | Oscuro estándar (predeterminado) |
-| Midnight | Azul noche profundo |
-| Slate | Gris azulado |
-| Warm | Tonos cálidos marrones |
-
-El esquema se recuerda durante la sesión activa (cookie de sesión PHP).
+- **Barra lateral responsiva:** Modo colapsado a iconos en escritorio (con tooltips instantáneos) y menú deslizante (*drawer*) en dispositivos móviles.
+- **Esquemas de color del panel:** Selector en la barra superior con 4 paletas: **Dark** (predeterminada), **Midnight** (azul noche profundo), **Slate** (gris pizarra) y **Warm** (tonos cálidos marrones).
+- **Notificaciones y atajos:** Indicadores de estado de guardado, acceso directo al blog público y perfil.
 
 ---
 
-## Artículos y Páginas
+## Artículos, Páginas y Calendario
 
-### Diferencia
+### Tipos de contenido
+- **Artículos:** Publicaciones periódicas organizadas por fecha, categorías, etiquetas, series y comentarios del Fediverso. Alimentan la portada, el feed RSS y el sitemap.
+- **Páginas:** Contenido estático permanente (Acerca de, Contacto, Proyectos) integrado de forma automática en el menú de navegación de los temas.
 
-- **Artículos** — entradas del blog con fecha, categorías, etiquetas y comentarios Mastodon. Aparecen en el listado principal y el RSS.
-- **Páginas** — contenido estático (Sobre mí, Contacto, etc.). Aparecen automáticamente en el menú de navegación del sitio y en el footer.
-
-### Rutas URL
-
-| Tipo | URL |
-|------|-----|
-| Home / blog | `tudominio.com/` |
+### Rutas URL amigables
+| Vista | Formato de URL |
+|---|---|
+| Portada del blog | `tudominio.com/` o `tudominio.com/blog` |
 | Artículo | `tudominio.com/article/el-slug` |
-| Página | `tudominio.com/page/el-slug` |
-| Categoría | `tudominio.com/category/linux` |
-| Etiqueta | `tudominio.com/tag/php` |
+| Página estática | `tudominio.com/page/el-slug` |
+| Catálogo de Series | `tudominio.com/series` |
+| Serie específica | `tudominio.com/series/nombre-serie` |
+| Directorio de Podcast | `tudominio.com/podcasts` (con plugin KutPod) |
+| Archivo por Categoría | `tudominio.com/category/nombre` |
+| Archivo por Etiqueta | `tudominio.com/tag/nombre` |
 | Búsqueda | `tudominio.com/search?q=termino` |
-| RSS | `tudominio.com/rss.xml` |
-| Sitemap | `tudominio.com/sitemap.xml` |
+| Feed RSS | `tudominio.com/rss.xml` o `tudominio.com/feed` |
+| Sitemap XML | `tudominio.com/sitemap.xml` |
+
+### Programación de publicaciones y Calendario
+- **Publicación programada:** Selecciona una fecha y hora futura en el editor para que el artículo pase a estado `scheduled`. Se publicará automáticamente al alcanzarse la fecha.
+- **Vista de Calendario (`/admin/calendar.php`):** Cuadrícula mensual con el desglose de artículos publicados, programados y borradores por día, con navegación entre meses y botón rápido `+` para programar un post en una fecha específica.
 
 ---
 
-## Editor de contenido
+## Editor de contenido triple-modo
 
-### Modos
+El editor de KutBlog combina la sencillez de redacción con herramientas profesionales:
 
-El editor tiene tres modos seleccionables con los botones **HTML** / **MD** en la toolbar:
+### 1. Tres modos de edición
+- **WYSIWYG visual:** Motor enriquecido (basado en TipTap/ProseMirror) con renderizado tipográfico en tiempo real.
+- **HTML Raw:** Edición directa del código HTML para control absoluto del marcado.
+- **Markdown:** Redacción ágil en Markdown nativo con vista previa en vivo y conversión bidireccional.
 
-- **HTML (WYSIWYG)** — editor visual con formato en tiempo real
-- **HTML raw** — código HTML directo (botón `</> HTML` en la toolbar)
-- **Markdown** — escritura en Markdown con preview en vivo
+### 2. Barra flotante contextual de imagen
+Al hacer clic sobre cualquier imagen insertada en el cuerpo del artículo, aparece una barra flotante con:
+- **Alineación:** Flotación a la izquierda con texto, centrado, flotación a la derecha o ancho completo (`100%`).
+- **Tamaños predefinidos:** `25%`, `50%`, `75%` y `100%`.
+- **Tamaño personalizado:** Control numérico para especificar dimensiones exactas (ej. `450px`, `60%`).
+- **Texto alternativo (ALT):** Edición rápida del atributo `alt` para accesibilidad y SEO.
+- **Eliminación:** Botón directo para retirar la imagen y limpiar el nodo de inmediato.
 
-### Toolbar
+### 3. Comandos de barra inclinada (`/` Slash Commands)
+Escribe `/` en cualquier línea vacía del editor para desplegar el menú de inserción rápida de encabezados (H2, H3), listas con viñetas o numeradas, bloques de código, citas o imágenes.
 
-| Grupo | Herramientas |
-|-------|-------------|
-| Encabezados | H2, H3, párrafo |
-| Formato | Negrita, Cursiva, Subrayado, Tachado |
-| Listas | Lista, Lista numerada, Cita, Bloque de código |
-| Insertar | Enlace, Imagen (URL o archivo), Divisor |
-| Historial | Deshacer, Rehacer |
-| Extras | HTML raw, Toolbar flotante, Modo sin distracciones |
+### 4. Barra flotante de selección de texto
+Al seleccionar cualquier fragmento de texto con el cursor o el teclado, se activa un menú flotante con herramientas de formato (negrita, cursiva, subrayado, tachado, código inline, enlaces y resaltado).
 
-### Toolbar flotante
+### 5. Autoguardado dual
+- **Copia local preventiva:** Guarda borradores en `localStorage` cada segundo mientras escribes para prevenir pérdidas por cierre accidental del navegador.
+- **Sincronización en servidor:** Envía deltas automáticos a `/admin/autosave.php` manteniendo tu borrador al día sin necesidad de pulsar guardar constantemente.
 
-Al activar el icono de toolbar flotante, al **seleccionar texto** aparece una mini-barra encima con: negrita, cursiva, subrayado, tachado, H2, H3, enlace. Funciona con selección de ratón y de teclado (Shift + flechas). Se desactiva con el mismo botón; preferencia guardada en localStorage.
-
-### Modo sin distracciones
-
-Botón ⤢ en la toolbar o tecla **F11**. Oculta la barra lateral, topbar y panel de opciones. Solo el editor a pantalla completa. **Escape** para salir.
-
-### Subir imágenes
-
-1. **En el cuerpo:** botón 🖼 en la toolbar → elige entre subir archivo o pegar URL
-2. **Imagen destacada:** panel lateral derecho → sección "Imagen Destacada" → botón "📁 Subir imagen" o campo URL
-
-Las imágenes subidas se guardan en `/media/YYYY/MM/nombre.jpg`.
-
-### Panel lateral derecho del editor
-
-| Campo | Descripción |
-|-------|-------------|
-| Estado | Borrador / Publicado |
-| URL Slug | Auto-generado del título, personalizable |
-| Resumen | Descripción corta para listados y SEO |
-| Categorías | Sugerencias de categorías existentes (clic para añadir) |
-| Etiquetas | Escribe para buscar entre las existentes o añade con Enter |
-| Imagen Destacada | URL o subida directa |
-| URL de Mastodon | URL del toot para activar comentarios |
-
-### Botones
-
-- **Guardar borrador** — guarda sin publicar
-- **🚀 Publicar** — publica inmediatamente
-- **✓ Actualizar** — actualiza un artículo publicado
-
-### Markdown soportado
-
-Encabezados, negrita, cursiva, tachado, listas, listas numeradas, código inline y bloques, tablas con alineación, citas, imágenes, enlaces, reglas horizontales, HTML inline.
+### 6. Modo sin distracciones
+Presiona **F11** o el botón de pantalla completa en la barra de herramientas para ocultar los paneles laterales y concentrarte únicamente en escribir. Pulsa **Escape** para salir.
 
 ---
 
-## Media
+## Biblioteca de medios y carpetas virtuales
 
-**Admin → Media**
+La gestión de medios en `/admin/media.php` ofrece una experiencia fluida tipo explorador de archivos:
 
-Muestra todas las imágenes en `/media/` organizadas por fecha de subida.
-
-- **Subir:** botón "Subir imagen" o arrastrar directamente sobre la página
-- **Copiar URL:** hover sobre la imagen → icono de copia
-- **Eliminar:** hover → icono de papelera
-
-Formatos aceptados: JPG, PNG, GIF, WebP, SVG, AVIF. Máximo 10 MB.
-
----
-
-## Importar desde WordPress
-
-Disponible a través del plugin oficial **Importador de WordPress** (`plugins/wp-import/`), administrable desde **Admin → Plugins** o en la barra lateral en **Admin → Herramientas → Importar WordPress**.
-
-### Cómo exportar desde WordPress
-
-En tu WordPress: **Herramientas → Exportar → Todo el contenido → Descargar exportación**. Se descarga un `.xml`.
-
-### Qué se importa
-
-| Se importa | No se importa |
-|-----------|---------------|
-| Posts → Artículos | Comentarios |
-| Pages → Páginas | Usuarios |
-| Categorías y etiquetas | Plugins |
-| Fechas y estado pub/borrador | Menús personalizados |
-| Imágenes incrustadas → `/media/` | Archivos no-imagen |
-| Imagen destacada | |
-
-### Opción "Descargar imágenes automáticamente"
-
-Con esta opción activa, KutBlog durante la importación:
-1. Detecta todas las `<img src="...">` del contenido
-2. Descarga cada imagen preservando la estructura de carpetas de WP (`/media/2025/02/imagen.jpg`)
-3. Reescribe las URLs en el contenido para apuntar a tu dominio
-
-Los bloques Gutenberg (`<!-- wp:paragraph -->` etc.) se eliminan automáticamente.
-
-### Importar imágenes después
-
-Si ya importaste sin imágenes: **Admin → Herramientas → Importar imágenes** escanea todos los artículos y descarga las imágenes que aún apuntan a dominios externos.
+- **Carpetas y subcarpetas virtuales (Plugin Carpetas Multimedia):** Organiza tus fotografías e ilustraciones en una jerarquía ilimitada de carpetas.
+- **URLs 100% estables:** La clasificación se realiza mediante metadatos en `content/media_folders.json`. Mover o reorganizar archivos entre carpetas **nunca rompe las URLs públicas** ni causa errores 404 en posts antiguos.
+- **Arrastrar y soltar (Drag & Drop):** Arrastra una o varias imágenes directamente sobre una carpeta del panel lateral para moverlas al instante.
+- **Subida directa con destino:** Selector de carpeta para ubicar tus archivos en el momento de la carga.
+- **Modal de detalles:** Edición de título, texto alternativo (alt), vista previa, copia de URL al portapapeles y reasignación de carpeta.
+- **Formatos soportados:** JPG, PNG, WebP, GIF, SVG y AVIF.
 
 ---
 
-## Temas
+## Sistema de plugins
 
-**Admin → Temas**
+KutBlog incluye una arquitectura modular de plugins desacoplados ubicados en `plugins/`. Cada plugin se puede activar o desactivar desde **Admin → Plugins**.
 
-Cinco temas incluidos:
+### Plugin: Series de artículos
+- **Propósito:** Agrupa publicaciones relacionadas en cursos, tutoriales o guías secuenciales con un orden de lectura pedagógico.
+- **Orden interactivo:** Reordena las entregas fácilmente mediante **Drag & Drop** o botones subir/bajar desde el panel de control.
+- **Inyección automática en el frontend:**
+  - **Banner superior:** Informa al lector: *«Parte X de Y en la serie [Nombre]»*.
+  - **Caja de navegación al pie:** Botones interactivos **«← Entrega anterior»** y **«Siguiente entrega →»**, más un índice desplegable con indicador visual de *«Leyendo ahora»*.
+- **Páginas dedicadas:** Catálogo general de series en `/series` y vista detallada de la serie en `/series/{slug}` con estadísticas y tiempo estimado de lectura.
 
-| Tema | Descripción |
-|------|-------------|
-| SystemInside | Header oscuro, fondo gris claro, sidebar derecho con categorías |
-| SystemInside Dark | Completamente oscuro |
-| SystemInside Light | Completamente claro |
-| Default | Claro minimalista, grid de tarjetas |
-| Dark | Oscuro minimalista, grid de tarjetas |
+### Plugin: Carpetas multimedia
+- Organización avanzada de la biblioteca mediante carpetas virtuales, contadores en tiempo real y asignación durante la subida o desde el editor.
 
-Para activar: clic en **Activar** junto al tema, o desde **Ajustes → Apariencia → Tema**.
+### Plugin: Newsletter
+- **Captura de suscriptores:** Widget responsive incrustado automáticamente al final de los artículos.
+- **Doble confirmación (Opt-in):** Envío de correo con enlace de verificación para cumplir con normativas de privacidad (GDPR).
+- **Gestor en el panel:** Listado de suscriptores activos, estado de verificación, exportación y envío de publicaciones por correo vía SMTP o `mail()`.
 
-Todos los temas usan la tipografía **Roboto Condensed** (títulos y navegación) y **Roboto** (cuerpo de texto).
+### Plugin: Fediverso (ActivityPub)
+- Convierte tu blog en un actor nativo del Fediverso.
+- Permite que usuarios de **Mastodon, Firefish, Pleroma o Pixelfed** sigan tu blog directamente (`@usuario@tudominio.com`), reciban tus nuevos artículos en su timeline e interactúen con ellos.
 
----
+### Plugin: KutPod Studio
+- Integración oficial con la plataforma de podcasting KutPod.
+- Sincronización automática de episodios por webhooks, reproductor de audio embebido, timestamps cliqueables, transcripciones optimizadas para SEO y directorio público en `/podcasts`.
 
-## Ajustes del sitio
+### Plugin: Búsqueda y reemplazo
+- Herramienta para actualizar URLs, nombres o cadenas de texto en masa a través de todos los artículos y páginas del blog.
+- **Modo simulación (Dry-run):** Muestra previamente cuántos archivos coinciden y qué líneas cambiarán antes de aplicar la modificación.
 
-**Admin → Ajustes**
-
-### General
-
-| Campo | Descripción |
-|-------|-------------|
-| Título del sitio | Nombre del blog |
-| Tagline | Descripción corta |
-| URL base | URL completa sin barra final. Ej: `https://www.tudominio.com` |
-| Artículos por página | Artículos en el listado (predeterminado: 8) |
-| Texto del footer | Texto libre en el pie de página |
-
-### Apariencia
-
-| Campo | Descripción |
-|-------|-------------|
-| Tema | Tema activo del sitio público |
-| Color de acento | Color principal. 10 presets + selector libre |
-
-### Mastodon / ActivityPub
-
-| Campo | Descripción |
-|-------|-------------|
-| Handle de Mastodon | Formato `@usuario@instancia.social`. Activa `fediverse:creator` |
-| URL de perfil | URL completa del perfil. Activa `<link rel="me">` para verificación |
-
-### Seguridad
-
-Permite cambiar usuario y contraseña. Requiere la contraseña actual.
+### Plugin: Importador de WordPress
+- Migración integral desde archivos de exportación estándar WXR (`.xml`) de WordPress.
+- Descarga automática de imágenes remotas a `/media/`, reescritura de URLs en el contenido, preservación de slugs, fechas originales, categorías y etiquetas.
 
 ---
 
-## Mastodon y redes sociales
+## Catálogo de temas
 
-### Verificación de perfil
+KutBlog incluye 8 temas optimizados para lectura, velocidad y puntuación perfecta en Core Web Vitals:
 
-1. En **Admin → Ajustes → Mastodon**, rellena handle y URL de perfil
-2. En tu perfil de Mastodon → **Editar perfil → Campos adicionales**, añade un campo con tu URL del sitio
-3. Mastodon detecta el `<link rel="me">` y marca el campo con ✓
+| Tema | Estilo y Características | Ideal para |
+|---|---|---|
+| **Default** | Claro, minimalista, diseño editorial con tarjetas en cuadrícula y tipografía limpia. | Blogs personales, revistas y noticias. |
+| **Dark** | Variante oscura del tema Default con alto contraste y tonalidades suaves para la vista. | Lectura nocturna y blogs tecnológicos. |
+| **Minimal** | Espacioso, diseño miniatura-first (*thumbnail-first*), selector de modo claro/oscuro y lectura despejada. | Portafolios visuales, fotografía y diseño. |
+| **Minimal Column** | Maquetación moderna a una sola columna centrada, mobile-first, con soporte para modo claro y oscuro. | Artículos de opinión, ensayos y narrativa. |
+| **Calendar** | Doble columna con línea de tiempo interactiva sincronizada al scroll y widget de calendario. | Bitácoras cronológicas, diarios y bitácoras de viaje. |
+| **SystemInside** | Cabecera oscura distintiva, distribución con barra lateral derecha y tipografía Roboto Condensed. | Sitios de tecnología, tutoriales y Linux. |
+| **SystemInside Dark** | Edición completamente oscura de SystemInside con paleta charcoal y acentos destacados. | Sitios técnicos y entornos de desarrollo. |
+| **SystemInside Light** | Edición completamente clara de SystemInside con fondos blancos puros y excelente legibilidad. | Documentación y lectura diurna. |
 
-### Comentarios de Mastodon
+Todos los temas admiten personalización del **Color de Acento** mediante CSS variables (`--accent`), soporte nativo para responsive design y favicon personalizado.
 
-Flujo completo:
+---
 
-1. Publica el artículo en tu blog
-2. Comparte la URL del artículo en Mastodon
-3. Copia la URL de **ese toot** (ej: `https://mastodon.social/@user/114123456789`)
-4. En el editor del artículo, pega esa URL en el campo **"URL de Mastodon"** del panel lateral
-5. Guarda
+## Ajustes del sitio y favicon
 
-Los comentarios son las respuestas al toot. KutBlog carga el hilo completo (incluyendo respuestas a respuestas) con indentación visual. Caché de 3 minutos.
+Desde **Admin → Ajustes**:
+- **General:** Título, descripción corta (tagline), URL base, artículos por página, idioma del sitio y texto del pie de página.
+- **Apariencia & Favicon personalizado:**
+  - Selector de tema activo y color de acento personalizado (10 presets + selector hexadecimal).
+  - **Subida de Favicon:** Admite formatos `.ico`, `.png` y `.svg`. KutBlog genera automáticamente versiones optimizadas y las enlaza con las etiquetas `<link rel="icon">` correspondientes, proporcionando un favicon predeterminado en caso de no configurar uno propio.
+- **Mastodon / Fediverso:** Configuración de handle `@usuario@instancia` para vincular autoría y enlace `<link rel="me">` de verificación de perfil.
+- **Seguridad:** Modificación de contraseña y usuario administrador con verificación de credenciales actuales.
 
-Para borrar la caché y forzar recarga:
+---
 
-```bash
-rm -f /var/www/html/misitio/cache/mastodon_*.json
-```
+## Estadísticas integradas (sin cookies)
+
+KutBlog incluye un motor nativo de estadísticas en `/admin/analytics.php` diseñado para respetar la privacidad del visitante y cumplir con el GDPR sin necesidad de banners de cookies:
+
+- **Sin cookies ni rastreadores:** Utiliza un hash anónimo unidireccional diario generado a partir de la IP y el User-Agent.
+- **Métricas registradas:**
+  - Páginas vistas totales y visitantes únicos diarios.
+  - Artículos y páginas más leídos.
+  - Fuentes de tráfico y procedencia (*referrers* directos, buscadores y redes sociales).
+  - Tipos de dispositivo (escritorio, móvil, tablet).
+  - Sistemas operativos y navegadores más utilizados.
+- **Rendimiento:** Registro ultrarrápido vía beacon asíncrono (`/api/track.php`) que no penaliza el tiempo de carga de las páginas.
+
+---
+
+## Mastodon y comentarios sociales
+
+KutBlog permite convertir las respuestas de Mastodon en el sistema de comentarios nativo de tus artículos sin bases de datos adicionales:
+
+1. Publica tu artículo en el blog.
+2. Comparte el enlace en tu cuenta de Mastodon.
+3. Copia la URL del toot publicado (ej. `https://mastodon.social/@usuario/112233445566`).
+4. Pega la URL en el campo **«URL de Mastodon»** en la barra lateral del editor.
+5. El artículo cargará automáticamente las respuestas, avatares y respuestas anidadas con caché inteligente de 3 minutos.
 
 ---
 
 ## RSS, Sitemap y SEO
 
-### Rutas
-
-| Recurso | URL |
-|---------|-----|
-| RSS | `tudominio.com/rss.xml` o `/feed` |
-| Sitemap | `tudominio.com/sitemap.xml` |
-| robots.txt | `tudominio.com/robots.txt` |
-
-### Metadatos automáticos en artículos
-
-- `og:title`, `og:description`, `og:image`, `og:url`, `og:type`
-- `<meta name="description">`
-- `<link rel="canonical">`
-- `<link rel="alternate">` para RSS
-- `<meta name="fediverse:creator">` (si está configurado Mastodon)
-- `<link rel="me">` (si está configurado Mastodon)
-
----
-
-## Herramientas
-
-### Buscar y reemplazar
-
-**Admin → Herramientas → Buscar y reemplazar**
-
-Busca y reemplaza texto en contenido, resumen e imagen destacada de todos los artículos y páginas. Tiene un modo **Simular** que muestra qué se vería afectado sin modificar nada.
-
-Útil tras cambiar de dominio: botón de acceso rápido "Dominio antiguo → nuevo" rellena los campos automáticamente con los valores de configuración actuales.
-
-> ⚠️ Modifica archivos directamente. Sin deshacer. Haz una copia de `content/` antes si tienes dudas.
+- **Feed RSS 2.0:** Disponible en `/rss.xml` y `/feed`. Incluye contenido completo o extracto, imágenes destacadas y metadatos del autor.
+- **Sitemap XML:** Generado automáticamente en `/sitemap.xml` indexando todos los artículos, páginas y colecciones de series publicados.
+- **Robots.txt:** Servido dinámicamente en `/robots.txt` con la URL canónica del sitemap.
+- **Open Graph y Twitter Cards:** Etiquetas `og:title`, `og:image`, `og:description`, `og:type` y canonicals generadas de forma automática en todos los artículos.
 
 ---
 
 ## Exportar y respaldar
 
-**Admin → Herramientas → Exportar contenido**
+### Copia de seguridad en un clic
+Desde **Admin → Exportar**: descarga un archivo ZIP con todos tus artículos, páginas, configuración (sin contraseñas) y opcionalmente todo el directorio de medios (`/media/`).
 
-Descarga un ZIP con:
-- Artículos (`content/articles/`)
-- Páginas (`content/pages/`)
-- Configuración del sitio (sin contraseña)
-- Imágenes de `/media/` (opcional)
-
-### Respaldo manual
-
-Para mover el blog a otro servidor, solo necesitas:
-
+### Respaldo manual rápido
+Para migrar o respaldar tu blog manualmente, solo requieres copiar:
+```bash
+content/      # Artículos, páginas, metadatos y series
+media/        # Todas las imágenes y archivos subidos
+config.json   # Ajustes del sitio
 ```
-content/      ← artículos y páginas
-media/        ← imágenes
-config.json   ← configuración y credenciales
-```
-
-Los archivos PHP del CMS se reinstalan desde cero descargando KutBlog de nuevo.
 
 ---
 
-## Nginx
+## Configuración de Nginx
 
-El archivo `systeminside.conf` incluido configura:
+Configuración de producción recomendada con soporte SSL y protección de directorios:
 
-- Redirección HTTP → HTTPS
-- Redirección non-www → www (o al revés)
-- SSL con Let's Encrypt
-- Bloqueo de `core/`, `cache/`, `content/`
-- Caché larga para assets estáticos (1 año)
-- Sin ejecución PHP en `/media/` y `/uploads/`
-- PHP-FPM 8.3
+```nginx
+server {
+    listen 80;
+    server_name tudominio.com www.tudominio.com;
+    return 301 https://tudominio.com$request_uri;
+}
 
-### Aplicar cambios
+server {
+    listen 443 ssl http2;
+    server_name tudominio.com;
+    root /var/www/html/misitio;
+    index index.php index.html;
 
-```bash
-nginx -t                    # verificar sintaxis
-systemctl reload nginx      # aplicar
-```
+    ssl_certificate /etc/letsencrypt/live/tudominio.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
 
-### Renovación automática SSL
+    # Enrutamiento principal
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
 
-Certbot instala un timer de systemd que renueva el certificado automáticamente. Verifica:
+    # Bloqueo estricto de directorios internos
+    location ~ ^/(core|content|cache)/ {
+        deny all;
+        return 404;
+    }
 
-```bash
-systemctl status certbot.timer
-certbot renew --dry-run
+    # Prohibir ejecución de PHP en uploads y media
+    location ~* ^/(media|uploads)/.*\.php$ {
+        deny all;
+        return 403;
+    }
+
+    # Caché estática de assets
+    location ~* \.(jpg|jpeg|png|gif|webp|svg|ico|css|js|woff2?|avif)$ {
+        expires 1y;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Procesamiento de PHP-FPM
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors on;
+    }
+}
 ```
 
 ---
 
 ## Seguridad
 
-| Medida | Detalle |
-|--------|---------|
-| Hash de contraseña | Argon2id |
-| CSRF | Token en todos los formularios del panel |
-| Rate limiting | 5 intentos fallidos → bloqueo 15 min por IP |
-| Regeneración de sesión | Cada 5 minutos |
-| Cookies | HttpOnly, SameSite=Strict, Secure |
-| Timeout de sesión | 4 horas de inactividad |
-| Bloqueo de directorios | `core/`, `cache/`, `content/` inaccesibles |
-| Sin PHP en uploads | Bloqueo en `/media/` y `/uploads/` |
-| Headers HTTP | X-Frame-Options, X-Content-Type-Options, CSP, HSTS |
+| Medida | Implementación |
+|---|---|
+| **Almacenamiento de contraseñas** | Algoritmo criptográfico **Argon2id**. |
+| **Protección contra CSRF** | Tokens criptográficos en todos los formularios de acción del panel. |
+| **Prevención de fuerza bruta** | Bloqueo temporal por IP tras 5 intentos consecutivos fallidos. |
+| **Seguridad en Cookies de sesión** | Flags `HttpOnly`, `SameSite=Strict`, regeneración periódica y `Secure`. |
+| **Protección de subida de archivos** | Validación MIME en servidor y prohibición de ejecución de scripts en `/media/`. |
+| **Cabeceras HTTP de seguridad** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, y saneamiento de esquemas `file:///`. |
 
 ---
 
 ## Crear un tema personalizado
 
-Un tema es una carpeta en `themes/` con estos archivos:
+Para crear un nuevo tema, crea una carpeta en `themes/mi-tema/` con los siguientes archivos:
 
 ```
 themes/mi-tema/
-├── theme.json    ← Metadatos (obligatorio)
-├── header.php    ← <head>, header del sitio, apertura del <main>
-├── footer.php    ← Footer, cierre del </body>
-├── index.php     ← Listado de artículos
-├── single.php    ← Vista de artículo o página
+├── theme.json    ← Metadatos obligatorios (label, description, author, version)
+├── header.php    ← Apertura del documento HTML, head y navegación
+├── footer.php    ← Pie de página y cierre del body
+├── index.php     ← Listado de artículos y archivos
+├── single.php    ← Visualización de artículo o página
 ├── search.php    ← Resultados de búsqueda
-└── 404.php       ← Página de error 404
+└── 404.php       ← Página de error no encontrado
 ```
 
-### theme.json
-
+### Ejemplo de theme.json
 ```json
 {
-  "label": "Mi Tema",
-  "description": "Descripción breve",
+  "label": "Mi Tema Personalizado",
+  "description": "Diseño editorial adaptado a mi marca",
   "author": "Tu Nombre",
   "version": "1.0.0"
 }
 ```
 
-### Variables disponibles en todos los templates
-
-| Variable | Tipo | Descripción |
-|----------|------|-------------|
-| `$site_title` | string | Título del sitio |
-| `$theme_color` | string | Color de acento, ej: `#e05c1a` |
-| `$base` | string | URL base sin barra final |
-| `$config` | array | Configuración completa |
-
-### Variables específicas
-
-**index.php:**
-
-| Variable | Descripción |
-|----------|-------------|
-| `$posts` | Array: `items`, `total`, `pages`, `page` |
-| `$category` | Nombre de categoría (si es archivo) |
-| `$tag` | Nombre de etiqueta (si es archivo) |
-
-**single.php:**
-
-| Variable | Descripción |
-|----------|-------------|
-| `$post` | Array completo del artículo/página |
-| `$type` | `'articles'` o `'pages'` |
-
-**search.php:**
-
-| Variable | Descripción |
-|----------|-------------|
-| `$results` | Array de resultados |
-| `$query` | Término buscado |
-
-### Estructura del array `$post`
-
-```php
-$post = [
-    'title'          => 'Título del artículo',
-    'slug'           => 'titulo-del-articulo',
-    'content'        => '<p>Contenido HTML...</p>',
-    'excerpt'        => 'Resumen breve',
-    'status'         => 'published',
-    'categories'     => ['Linux', 'Servidores'],
-    'tags'           => ['nginx', 'php'],
-    'featured_image' => 'https://tudominio.com/media/2025/04/portada.jpg',
-    'mastodon_url'   => 'https://mastodon.social/@user/123',
-    'content_format' => 'html',
-    'created_at'     => '2025-04-12T10:30:00+00:00',
-    'updated_at'     => '2025-04-12T14:00:00+00:00',
-];
-```
-
-### Variables CSS automáticas
-
-Llama a `get_theme_css_vars()` en el `<head>` de `header.php`:
-
-```php
-<style>
-<?= get_theme_css_vars() ?>
-/* Tu CSS aquí, usa var(--accent), var(--accent-light), etc. */
-</style>
-```
-
-Esto inyecta:
-
-```css
-:root {
-    --accent:        #e05c1a;
-    --accent-rgb:    224,92,26;
-    --accent-light:  rgba(224,92,26,0.1);
-    --accent-medium: rgba(224,92,26,0.3);
-}
-```
-
-### header.php mínimo
-
-```php
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= isset($post) ? htmlspecialchars($post['title']).' — ' : '' ?><?= htmlspecialchars($site_title) ?></title>
-<style>
-<?= get_theme_css_vars() ?>
-body { font-family: sans-serif; }
-a { color: var(--accent); }
-</style>
-</head>
-<body>
-<header>
-  <a href="<?= $base ?>/"><?= htmlspecialchars($site_title) ?></a>
-</header>
-<main>
-```
-
-### footer.php mínimo
-
-```php
-</main>
-<footer>
-  <p><?= htmlspecialchars($config['footer_text'] ?? '© '.date('Y').' '.$site_title) ?></p>
-</footer>
-</body>
-</html>
-```
-
-### Auto-embed de YouTube
-
-Para convertir URLs de YouTube en iframes, añade al inicio de `single.php`:
-
-```php
-<?php
-$content = $post['content'] ?? '';
-$content = preg_replace_callback(
-    '#(?:<p>)?\s*(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w\-]{11})[^\s<]*)\s*(?:</p>)?#i',
-    function($m) {
-        return '<div class="yt-embed"><iframe src="https://www.youtube-nocookie.com/embed/'.$m[2].'" allowfullscreen loading="lazy"></iframe></div>';
-    },
-    $content
-);
-?>
-```
-
-Y el CSS necesario:
-
-```css
-.yt-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; }
-.yt-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-```
-
-### Activar el tema
-
-Una vez creada la carpeta, aparece automáticamente en **Admin → Temas**. Clic en **Activar**.
+Al colocar la carpeta, KutBlog la detectará automáticamente en **Admin → Temas**.
 
 ---
 
 ## Estructura del contenido JSON
 
-Cada artículo se guarda en `content/articles/el-slug.json`. Puedes editar los archivos directamente con cualquier editor de texto.
+Cada artículo se almacena de forma independiente como un archivo `.json` en `content/articles/{slug}.json`:
 
 ```json
 {
-    "title": "Mi primer artículo",
-    "slug": "mi-primer-articulo",
-    "content": "<p>Contenido HTML aquí.</p>",
-    "excerpt": "Un resumen del artículo.",
-    "status": "published",
-    "categories": ["General"],
-    "tags": ["kutblog", "blog"],
-    "featured_image": "https://tudominio.com/media/2025/04/portada.jpg",
-    "mastodon_url": "",
+    "title": "Introducción a Docker",
+    "slug": "introduccion-a-docker",
+    "content": "<p>Contenido completo en HTML o Markdown...</p>",
     "content_format": "html",
-    "created_at": "2025-04-12T10:00:00+00:00",
-    "updated_at": "2025-04-12T10:00:00+00:00"
+    "excerpt": "Aprende los conceptos básicos de contenedores.",
+    "status": "published",
+    "categories": ["Desarrollo", "DevOps"],
+    "tags": ["docker", "contenedores", "linux"],
+    "featured_image": "/media/2026/10/docker-banner.jpg",
+    "mastodon_url": "https://mastodon.social/@usuario/112233445566",
+    "series_id": "ser_docker",
+    "created_at": "2026-10-31T18:00:00-05:00",
+    "updated_at": "2026-11-01T09:30:00-05:00"
 }
 ```
 
@@ -697,98 +511,18 @@ Cada artículo se guarda en `content/articles/el-slug.json`. Puedes editar los a
 
 ## Solución de problemas
 
-### Error 500 al cargar el sitio
-
+### Error 500 al instalar o abrir el sitio
+Comprueba los permisos de escritura en `content/`, `cache/` y `config.json`. Verifica el registro de errores de tu servidor web:
 ```bash
-tail -50 /var/log/nginx/tudominio.error.log
+tail -n 50 /var/log/nginx/error.log
 ```
 
-Causa más común: permisos incorrectos en `content/`, `cache/` o `config.json`.
+### Las imágenes importadas no cargan
+Si realizaste una importación desde WordPress sin descargar imágenes, dirígete a **Admin → Herramientas → Importar imágenes** para bajarlas al servidor local y reescribir sus referencias.
 
-### El panel redirige a URL incorrecta
-
-Comprueba la **URL base** en **Admin → Ajustes → General**. Debe coincidir exactamente con la URL que usas para acceder (con o sin www, con https).
-
-### Las imágenes no se ven tras importar WordPress
-
-Ve a **Admin → Herramientas → Importar imágenes** para descargar las imágenes a `/media/` y reescribir las URLs en el contenido.
-
-### Los comentarios de Mastodon no aparecen
-
-1. Verifica que la URL del toot sea correcta: `https://instancia.social/@usuario/NUMEROID`
-2. Borra la caché:
-   ```bash
-   rm -f /var/www/html/misitio/cache/mastodon_*.json
-   ```
-3. Recarga el artículo
-
-### Error `Primary script unknown` en Nginx
-
-El `root` del vhost no apunta a la carpeta correcta. Verifica la línea `root` en el archivo de configuración de Nginx.
-
-### No puedo acceder al panel después de cambiar la URL base
-
-Si accidentalmente pusiste una URL incorrecta y no puedes entrar al panel, edita `config.json` directamente en el servidor:
-
-```bash
-nano /var/www/html/misitio/config.json
-# Cambia el valor de "base_url" a la URL correcta
-```
-
-### Error `Cannot bind to port 443` al iniciar Nginx
-
-```bash
-pkill nginx
-sleep 2
-systemctl start nginx
-```
+### Redirección incorrecta tras cambiar de dominio
+Si modificaste el dominio o el protocolo (HTTP a HTTPS) y no puedes iniciar sesión en el panel, edita directamente `config.json` en la raíz de tu instalación y actualiza la clave `"base_url"`.
 
 ---
 
-## Estadísticas: opciones disponibles
-
-> Esta sección documenta opciones para el futuro, **no implementadas actualmente**.
-
-### Opción 1 — Contador en archivos (nativo)
-Guarda un contador en JSON por artículo. Sin dependencias, sin base de datos, mínimo impacto en rendimiento. Solo cuenta visitas, no da detalles de dispositivo o procedencia.
-
-### Opción 2 — Umami (recomendada)
-Analíticas ligeras y respetuosas con la privacidad. Script de ~2 KB, sin cookies, cumple GDPR. Autoalojado en el mismo servidor. Da páginas vistas, referrers, dispositivos, países y tiempo en página.
-- Web: https://umami.is
-
-### Opción 3 — GoatCounter
-Extremadamente ligero (< 1 KB de script), open source, diseñado para blogs pequeños. Da páginas vistas y referrers. Versión gratuita en goatcounter.com o autoalojado.
-- Web: https://www.goatcounter.com
-
-### Opción 4 — Plausible
-Similar a Umami con interfaz más pulida. Versión cloud de pago, versión autoalojada gratuita.
-- Web: https://plausible.io
-
-### Opción 5 — GoAccess (logs de Nginx)
-Sin ningún script adicional. Procesa los logs de Nginx existentes y genera informes HTML completos con páginas más visitadas, referrers, dispositivos, países y más.
-
-```bash
-# Instalar
-apt install goaccess
-
-# Generar informe HTML
-goaccess /var/log/nginx/tudominio.access.log \
-  --log-format=COMBINED \
-  -o /var/www/html/misitio/stats.html
-
-# Proteger el acceso con contraseña en Nginx si lo haces público
-```
-
-### Comparativa
-
-| Opción | Instalación | Datos | Impacto en rendimiento |
-|--------|-------------|-------|----------------------|
-| Contador en archivos | Ninguna | Solo visitas | Mínimo |
-| GoAccess | Mínima | Completos | Ninguno |
-| GoatCounter | Simple | Buenos | Mínimo |
-| Umami | Media | Completos | Mínimo |
-| Plausible | Media/SaaS | Completos | Mínimo |
-
----
-
-*KutBlog — Ligero, rápido y sin base de datos.*
+*KutBlog — Creado para escribir, diseñado para durar.*
