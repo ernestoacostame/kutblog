@@ -234,74 +234,74 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 
               <!-- Writing Desk: Floating Image Alignment & Size Menu -->
               <div id="image-bubble-menu" class="writing-bubble-menu image-align-toolbar" style="display:none;" role="toolbar" aria-label="Alineación y tamaño de imagen">
-                <!-- Alignment -->
-                <button type="button" class="bubble-btn" data-align="left" title="Alinear a la izquierda (flotar con texto)">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="8" height="8" rx="1"></rect>
-                    <line x1="14" y1="5" x2="21" y2="5"></line>
-                    <line x1="14" y1="9" x2="21" y2="9"></line>
-                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                    <line x1="3" y1="19" x2="21" y2="19"></line>
-                  </svg>
-                </button>
-                <button type="button" class="bubble-btn" data-align="center" title="Centrar">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="4" x2="21" y2="4"></line>
-                    <rect x="7" y="8" width="10" height="8" rx="1"></rect>
-                    <line x1="3" y1="20" x2="21" y2="20"></line>
-                  </svg>
-                </button>
-                <button type="button" class="bubble-btn" data-align="right" title="Alinear a la derecha (flotar con texto)">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="13" y="4" width="8" height="8" rx="1"></rect>
-                    <line x1="3" y1="5" x2="10" y2="5"></line>
-                    <line x1="3" y1="9" x2="10" y2="9"></line>
-                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                    <line x1="3" y1="19" x2="21" y2="19"></line>
-                  </svg>
-                </button>
-                <button type="button" class="bubble-btn" data-align="full" title="Ancho completo">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="4" x2="21" y2="4"></line>
-                    <rect x="3" y="7" width="18" height="10" rx="1"></rect>
-                    <line x1="3" y1="20" x2="21" y2="20"></line>
-                  </svg>
-                </button>
+                <!-- Group 1: Alignment (Segmented Control) -->
+                <div class="img-tb-group" role="group" aria-label="Alineación">
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="left" title="Alinear a la izquierda (flotar con texto)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="8" height="8" rx="1"></rect>
+                      <line x1="14" y1="5" x2="21" y2="5"></line>
+                      <line x1="14" y1="9" x2="21" y2="9"></line>
+                      <line x1="3" y1="15" x2="21" y2="15"></line>
+                      <line x1="3" y1="19" x2="21" y2="19"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="center" title="Centrar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="3" y1="4" x2="21" y2="4"></line>
+                      <rect x="7" y="8" width="10" height="8" rx="1"></rect>
+                      <line x1="3" y1="20" x2="21" y2="20"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="right" title="Alinear a la derecha (flotar con texto)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="13" y="4" width="8" height="8" rx="1"></rect>
+                      <line x1="3" y1="5" x2="10" y2="5"></line>
+                      <line x1="3" y1="9" x2="10" y2="9"></line>
+                      <line x1="3" y1="15" x2="21" y2="15"></line>
+                      <line x1="3" y1="19" x2="21" y2="19"></line>
+                    </svg>
+                  </button>
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="full" title="Ancho completo">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="3" y1="4" x2="21" y2="4"></line>
+                      <rect x="3" y="7" width="18" height="10" rx="1"></rect>
+                      <line x1="3" y1="20" x2="21" y2="20"></line>
+                    </svg>
+                  </button>
+                </div>
 
-                <div class="bubble-sep"></div>
+                <div class="img-tb-sep"></div>
 
-                <!-- Size Presets -->
-                <button type="button" class="bubble-btn img-size-btn" data-size="25%" title="Tamaño: 25%">25%</button>
-                <button type="button" class="bubble-btn img-size-btn" data-size="50%" title="Tamaño: 50%">50%</button>
-                <button type="button" class="bubble-btn img-size-btn" data-size="75%" title="Tamaño: 75%">75%</button>
-                <button type="button" class="bubble-btn img-size-btn" data-size="100%" title="Tamaño: 100% (Original)">100%</button>
-                <button type="button" class="bubble-btn" id="img-btn-custom-size" title="Personalizar tamaño (px o %)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <polyline points="9 21 3 21 3 15"></polyline>
-                    <line x1="21" y1="3" x2="14" y2="10"></line>
-                    <line x1="3" y1="21" x2="10" y2="14"></line>
-                  </svg>
-                </button>
+                <!-- Group 2: Size Presets & Custom (Segmented Control) -->
+                <div class="img-tb-group" role="group" aria-label="Tamaño">
+                  <button type="button" class="img-tb-btn bubble-btn img-size-btn" data-size="25%" title="Tamaño: 25%">25%</button>
+                  <button type="button" class="img-tb-btn bubble-btn img-size-btn" data-size="50%" title="Tamaño: 50%">50%</button>
+                  <button type="button" class="img-tb-btn bubble-btn img-size-btn" data-size="75%" title="Tamaño: 75%">75%</button>
+                  <button type="button" class="img-tb-btn bubble-btn img-size-btn" data-size="100%" title="Tamaño: 100% (Original)">100%</button>
+                  <button type="button" class="img-tb-btn bubble-btn" id="img-btn-custom-size" title="Personalizar tamaño (px o %)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <polyline points="9 21 3 21 3 15"></polyline>
+                      <line x1="21" y1="3" x2="14" y2="10"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                  </button>
+                </div>
 
-                <div class="bubble-sep"></div>
+                <div class="img-tb-sep"></div>
 
-                <!-- Edit Alt Text -->
-                <button type="button" class="bubble-btn bubble-btn-alt" id="img-btn-alt" title="Editar texto alternativo (alt)">
-                  ALT
-                </button>
-
-                <div class="bubble-sep"></div>
-
-                <!-- Delete Image -->
-                <button type="button" class="bubble-btn bubble-btn-danger" id="img-btn-delete" title="Eliminar imagen">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
-                </button>
+                <!-- Group 3: Alt Text & Delete -->
+                <div class="img-tb-group" role="group" aria-label="Acciones">
+                  <button type="button" class="img-tb-btn bubble-btn img-tb-alt" id="img-btn-alt" title="Editar texto alternativo (alt)">ALT</button>
+                  <button type="button" class="img-tb-btn bubble-btn img-tb-delete" id="img-btn-delete" title="Eliminar imagen">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <!-- Writing Desk: Slash Command Palette (/) -->
@@ -811,103 +811,116 @@ body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
 }
 
 /* ── Writing Desk: Floating Image Alignment & Size Menu ────── */
-.image-align-toolbar {
+#image-bubble-menu.image-align-toolbar {
+  position: fixed !important;
+  display: inline-flex;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: calc(100vw - 24px) !important;
+  height: 34px !important;
+  padding: 3px 5px !important;
+  gap: 5px !important;
   background: var(--surface) !important;
   border: 1px solid var(--border2) !important;
-  border-radius: 10px !important;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4) !important;
-  display: flex !important;
-  align-items: center !important;
-  padding: 4px 6px !important;
-  gap: 3px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  z-index: 9999 !important;
   user-select: none !important;
-  width: auto !important;
-  max-width: calc(100vw - 20px) !important;
+  box-sizing: border-box !important;
 }
-.image-align-toolbar .bubble-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text);
-  height: 28px;
-  min-width: 28px;
-  padding: 0 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s ease;
-  box-sizing: border-box;
+
+.image-align-toolbar .img-tb-group {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 1px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 6px !important;
+  padding: 2px !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
 }
-.image-align-toolbar .bubble-btn:hover {
-  background: var(--surface2);
-  color: var(--text);
+body.scheme-light .image-align-toolbar .img-tb-group {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
-.image-align-toolbar .bubble-btn.active {
+
+.image-align-toolbar .img-tb-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text) !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  padding: 0 5px !important;
+  margin: 0 !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  transition: all 0.12s ease !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+  text-decoration: none !important;
+}
+.image-align-toolbar .img-tb-btn:hover {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+}
+.image-align-toolbar .img-tb-btn.active {
   background: var(--accent) !important;
   color: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
-.image-align-toolbar .bubble-btn.active svg {
+.image-align-toolbar .img-tb-btn.active svg {
   stroke: #fff !important;
 }
-.image-align-toolbar .img-size-btn {
-  font-size: 11px !important;
+.image-align-toolbar .img-tb-btn svg {
+  display: block !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+}
+
+.image-align-toolbar .img-tb-btn[data-size] {
+  min-width: 34px !important;
+  padding: 0 4px !important;
+  font-size: 10.5px !important;
   font-weight: 600 !important;
-  min-width: 38px !important;
-  height: 26px !important;
-  padding: 0 6px !important;
-  border-radius: 5px !important;
-  font-variant-numeric: tabular-nums;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text);
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: -0.02em !important;
 }
-body.scheme-light .image-align-toolbar .img-size-btn {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+
+.image-align-toolbar .img-tb-sep {
+  width: 1px !important;
+  height: 16px !important;
+  background: var(--border2) !important;
+  margin: 0 1px !important;
+  flex: 0 0 1px !important;
 }
-.image-align-toolbar .img-size-btn:hover {
-  background: var(--surface2);
-  border-color: var(--border);
-}
-.image-align-toolbar .img-size-btn.active {
-  background: var(--accent) !important;
-  color: #fff !important;
-  border-color: var(--accent) !important;
-}
-.image-align-toolbar .bubble-sep {
-  width: 1px;
-  height: 18px;
-  background: var(--border2);
-  margin: 0 5px;
-  flex-shrink: 0;
-}
-.image-align-toolbar .bubble-btn-alt {
-  font-size: 11px !important;
+
+.image-align-toolbar .img-tb-alt {
+  font-size: 10px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
-  min-width: 36px !important;
-  height: 26px !important;
-  border-radius: 5px !important;
-  padding: 0 7px !important;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.05em !important;
+  padding: 0 6px !important;
+  min-width: 28px !important;
 }
-body.scheme-light .image-align-toolbar .bubble-btn-alt {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-.image-align-toolbar .bubble-btn-alt:hover {
-  background: var(--surface2);
-  border-color: var(--border);
-}
-.image-align-toolbar .bubble-btn-danger {
+
+.image-align-toolbar .img-tb-delete {
   color: #f43f5e !important;
 }
-.image-align-toolbar .bubble-btn-danger:hover {
-  background: rgba(244, 63, 94, 0.15) !important;
+.image-align-toolbar .img-tb-delete:hover {
+  background: rgba(244, 63, 94, 0.18) !important;
   color: #f43f5e !important;
 }
 
@@ -3584,7 +3597,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         const nodeDom = (typeof view.nodeDOM === 'function' ? view.nodeDOM(from) : null) || view.dom.querySelector('.ProseMirror-selectednode') || view.dom.querySelector('img.align-left, img.align-right, img.align-center, img.align-full, img[src]');
         const imgRect = (nodeDom && typeof nodeDom.getBoundingClientRect === 'function') ? nodeDom.getBoundingClientRect() : null;
 
-        imageBubbleMenu.style.display = 'flex';
+        imageBubbleMenu.style.display = 'inline-flex';
         const menuRect = imageBubbleMenu.getBoundingClientRect();
 
         let left, top;
