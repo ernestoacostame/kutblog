@@ -43,19 +43,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $data = [
-            'title'         => trim($_POST['title'] ?? ''),
-            'content'       => $_POST['content'] ?? '',
-            'excerpt'       => trim($_POST['excerpt'] ?? ''),
-            'slug'          => sanitize_filename(trim($_POST['custom_slug'] ?? '') ?: slug_from_title($_POST['title'] ?? '')),
-            'status'        => $target_status,
-            'categories'    => array_filter(array_map('trim', explode(',', $_POST['categories'] ?? ''))),
-            'tags'          => array_filter(array_map('trim', explode(',', $_POST['tags'] ?? ''))),
-            'featured_image'  => trim($_POST['featured_image'] ?? ''),
-            'mastodon_url'    => trim($_POST['mastodon_url'] ?? ''),
-            'kutpod_url'      => trim($_POST['kutpod_url'] ?? ($post['kutpod_url'] ?? '')),
-            'podcast_meta'    => $post['podcast_meta'] ?? null,
-            'original_slug' => $slug,
-            'created_at'    => $post_created_at,
+            'title'          => trim($_POST['title'] ?? ''),
+            'content'        => $_POST['content'] ?? '',
+            'content_format' => in_array($_POST['content_format'] ?? '', ['markdown', 'html']) ? $_POST['content_format'] : 'html',
+            'excerpt'        => trim($_POST['excerpt'] ?? ''),
+            'slug'           => sanitize_filename(trim($_POST['custom_slug'] ?? '') ?: slug_from_title($_POST['title'] ?? '')),
+            'status'         => $target_status,
+            'categories'     => array_filter(array_map('trim', explode(',', $_POST['categories'] ?? ''))),
+            'tags'           => array_filter(array_map('trim', explode(',', $_POST['tags'] ?? ''))),
+            'featured_image' => trim($_POST['featured_image'] ?? ''),
+            'mastodon_url'   => trim($_POST['mastodon_url'] ?? ''),
+            'kutpod_url'     => trim($_POST['kutpod_url'] ?? ($post['kutpod_url'] ?? '')),
+            'podcast_meta'   => $post['podcast_meta'] ?? null,
+            'original_slug'  => $slug,
+            'created_at'     => $post_created_at,
         ];
         if (!$data['title']) { $error = __("editor_error_title"); }
         else {
@@ -103,7 +104,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $label = $type === 'articles' ? __raw('nav_articles') : __raw('nav_pages');
-$content_format = 'html'; // Always HTML format now
+$content_format = in_array($post['content_format'] ?? '', ['markdown', 'html']) ? $post['content_format'] : 'html';
+$post_raw_content = $post['content'] ?? '';
+$initial_html = ($content_format === 'markdown' && function_exists('flux_markdown'))
+    ? flux_markdown($post_raw_content)
+    : $post_raw_content;
+$initial_markdown = ($content_format === 'markdown')
+    ? $post_raw_content
+    : '';
 admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article')), $type);
 ?>
     </div>
@@ -116,8 +124,8 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 
     <form id="editor-form" method="POST">
       <input type="hidden" name="csrf" value="<?= $csrf ?>">
-      <input type="hidden" name="content" id="content-input" value="<?= htmlspecialchars($post['content'] ?? '') ?>">
-      <input type="hidden" name="content_format" id="content-format-input" value="html">
+      <input type="hidden" name="content" id="content-input" value="<?= htmlspecialchars($post_raw_content) ?>">
+      <input type="hidden" name="content_format" id="content-format-input" value="<?= htmlspecialchars($content_format) ?>">
 
       <?php
       $cur_status = $post['status'] ?? 'draft';
@@ -156,7 +164,12 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                 <span class="desk-metrics" id="desk-metrics">0 palabras · 1 min de lectura</span>
               </div>
               <div class="desk-chrome-right">
-                <button type="button" class="btn btn-secondary btn-sm" id="switch-raw" title="Alternar código RAW / Visual">RAW</button>
+                <!-- Editor Mode Switcher: WYSIWYG, RAW, Markdown -->
+                <div class="editor-mode-switcher" role="group" aria-label="Modo de edición">
+                  <button type="button" class="mode-btn <?= $content_format !== 'markdown' ? 'active' : '' ?>" id="btn-mode-wysiwyg" data-mode="wysiwyg" title="Editor Visual (WYSIWYG)">WYSIWYG</button>
+                  <button type="button" class="mode-btn" id="btn-mode-raw" data-mode="raw" title="Código HTML directo (RAW)">RAW</button>
+                  <button type="button" class="mode-btn <?= $content_format === 'markdown' ? 'active' : '' ?>" id="btn-mode-markdown" data-mode="markdown" title="Editor Markdown">Markdown</button>
+                </div>
                 <?php if ($post && ($post['status'] ?? '') === 'published'): ?>
                 <a href="<?= base_url() ?>/<?= $type === 'articles' ? 'article' : 'page' ?>/<?= htmlspecialchars($post['slug']) ?>" target="_blank" class="btn btn-secondary btn-sm" title="Ver en el sitio web">Ver ↗</a>
                 <?php endif; ?>
@@ -236,8 +249,8 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
               <div id="image-bubble-menu" class="writing-bubble-menu image-align-toolbar" style="display:none;" role="toolbar" aria-label="Alineación y tamaño de imagen">
                 <!-- Group 1: Alignment (Segmented Control) -->
                 <div class="img-tb-group" role="group" aria-label="Alineación">
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="left" title="Alinear a la izquierda (flotar con texto)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="left" data-img-align="left" title="Alinear a la izquierda (flotar con texto)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="3" y="4" width="8" height="8" rx="1"></rect>
                       <line x1="14" y1="5" x2="21" y2="5"></line>
                       <line x1="14" y1="9" x2="21" y2="9"></line>
@@ -245,15 +258,15 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                       <line x1="3" y1="19" x2="21" y2="19"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="center" title="Centrar">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="center" data-img-align="center" title="Centrar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="3" y1="4" x2="21" y2="4"></line>
                       <rect x="7" y="8" width="10" height="8" rx="1"></rect>
                       <line x1="3" y1="20" x2="21" y2="20"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="right" title="Alinear a la derecha (flotar con texto)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="right" data-img-align="right" title="Alinear a la derecha (flotar con texto)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="13" y="4" width="8" height="8" rx="1"></rect>
                       <line x1="3" y1="5" x2="10" y2="5"></line>
                       <line x1="3" y1="9" x2="10" y2="9"></line>
@@ -261,11 +274,11 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                       <line x1="3" y1="19" x2="21" y2="19"></line>
                     </svg>
                   </button>
-                  <button type="button" class="img-tb-btn bubble-btn" data-align="full" title="Ancho completo">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="3" y1="4" x2="21" y2="4"></line>
-                      <rect x="3" y="7" width="18" height="10" rx="1"></rect>
-                      <line x1="3" y1="20" x2="21" y2="20"></line>
+                  <button type="button" class="img-tb-btn bubble-btn" data-align="full" data-img-align="full" title="Ancho completo">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="2" y1="4" x2="22" y2="4"></line>
+                      <rect x="2" y="7" width="20" height="10" rx="1"></rect>
+                      <line x1="2" y1="20" x2="22" y2="20"></line>
                     </svg>
                   </button>
                 </div>
@@ -280,10 +293,10 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                   <button type="button" class="img-tb-btn bubble-btn img-size-btn" data-size="100%" title="Tamaño: 100% (Original)">100%</button>
                   <button type="button" class="img-tb-btn bubble-btn" id="img-btn-custom-size" title="Personalizar tamaño (px o %)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="15 3 21 3 21 9"></polyline>
-                      <polyline points="9 21 3 21 3 15"></polyline>
-                      <line x1="21" y1="3" x2="14" y2="10"></line>
-                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                      <path d="M15 3h6v6"></path>
+                      <path d="M9 21H3v-6"></path>
+                      <path d="M21 3l-7 7"></path>
+                      <path d="M3 21l7-7"></path>
                     </svg>
                   </button>
                 </div>
@@ -410,13 +423,16 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
               </div>
 
               <!-- ProseMirror Mount Target -->
-              <div id="prosemirror-mount" class="desk-prosemirror-mount"></div>
+              <div id="prosemirror-mount" class="desk-prosemirror-mount" style="<?= $content_format === 'markdown' ? 'display:none;' : '' ?>"></div>
 
               <!-- Fallback / Legacy Visual Editor (hidden when ProseMirror active) -->
-              <div id="editor" class="prose-editor" contenteditable="true" style="display:none;"><?= $post['content'] ?? '' ?></div>
+              <div id="editor" class="prose-editor" contenteditable="true" style="display:none;"><?= $initial_html ?></div>
 
               <!-- RAW Editor Textarea (hidden by default) -->
-              <textarea id="raw-editor" class="desk-raw-editor" style="display:none;"><?= htmlspecialchars($post['content'] ?? '') ?></textarea>
+              <textarea id="raw-editor" class="desk-raw-editor" style="display:none;"><?= htmlspecialchars($initial_html) ?></textarea>
+
+              <!-- Markdown Editor Textarea -->
+              <textarea id="markdown-editor" class="desk-raw-editor desk-markdown-editor" style="<?= $content_format === 'markdown' ? 'display:block;' : 'display:none;' ?>" placeholder="Escribe aquí en formato Markdown..."><?= htmlspecialchars($initial_markdown) ?></textarea>
             </div>
           </div>
         </div>
@@ -743,6 +759,58 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 
 
 <style>
+/* ── Editor Mode Switcher (WYSIWYG, RAW, Markdown) ───────────── */
+.editor-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  user-select: none;
+}
+body.scheme-light .editor-mode-switcher {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.editor-mode-switcher .mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+  font-family: inherit;
+}
+.editor-mode-switcher .mode-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+body.scheme-light .editor-mode-switcher .mode-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.editor-mode-switcher .mode-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+body.scheme-light .editor-mode-switcher .mode-btn.active {
+  background: #ffffff;
+  color: var(--accent);
+}
+
+.desk-markdown-editor {
+  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.7 !important;
+  tab-size: 2 !important;
+}
+
 /* ── Writing Desk: Floating Bubble Menu ──────────────────────── */
 .writing-bubble-menu {
   position: absolute;
@@ -813,7 +881,7 @@ body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
 /* ── Writing Desk: Floating Image Alignment & Size Menu ────── */
 #image-bubble-menu.image-align-toolbar {
   position: fixed !important;
-  display: inline-flex;
+  display: inline-flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
@@ -821,41 +889,53 @@ body[data-theme="dark"] .bubble-pen-mark, .dark .bubble-pen-mark {
   width: max-content !important;
   min-width: 0 !important;
   max-width: calc(100vw - 24px) !important;
-  height: 34px !important;
-  padding: 3px 5px !important;
-  gap: 5px !important;
-  background: var(--surface) !important;
-  border: 1px solid var(--border2) !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 3px 4px !important;
+  margin: 0 !important;
+  gap: 4px !important;
+  background: rgba(24, 24, 27, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 8px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
   z-index: 9999 !important;
   user-select: none !important;
   box-sizing: border-box !important;
 }
+body.scheme-light #image-bubble-menu.image-align-toolbar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15) !important;
+}
 
-.image-align-toolbar .img-tb-group {
+#image-bubble-menu .img-tb-group {
   display: inline-flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 1px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
+  height: 26px !important;
+  gap: 2px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 6px !important;
-  padding: 2px !important;
+  padding: 1px 2px !important;
+  margin: 0 !important;
   box-sizing: border-box !important;
   flex: 0 0 auto !important;
 }
-body.scheme-light .image-align-toolbar .img-tb-group {
+body.scheme-light #image-bubble-menu .img-tb-group {
   background: rgba(0, 0, 0, 0.04) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-.image-align-toolbar .img-tb-btn {
+#image-bubble-menu .img-tb-btn {
   background: transparent !important;
   border: none !important;
-  color: var(--text) !important;
-  height: 24px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  height: 22px !important;
   min-width: 24px !important;
   padding: 0 5px !important;
   margin: 0 !important;
@@ -872,56 +952,70 @@ body.scheme-light .image-align-toolbar .img-tb-group {
   box-sizing: border-box !important;
   flex: 0 0 auto !important;
   text-decoration: none !important;
+  float: none !important;
 }
-.image-align-toolbar .img-tb-btn:hover {
-  background: var(--surface2) !important;
-  color: var(--text) !important;
+body.scheme-light #image-bubble-menu .img-tb-btn {
+  color: rgba(0, 0, 0, 0.7) !important;
 }
-.image-align-toolbar .img-tb-btn.active {
+#image-bubble-menu .img-tb-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+body.scheme-light #image-bubble-menu .img-tb-btn:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #000000 !important;
+}
+#image-bubble-menu .img-tb-btn.active {
   background: var(--accent) !important;
-  color: #fff !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
-.image-align-toolbar .img-tb-btn.active svg {
-  stroke: #fff !important;
+#image-bubble-menu .img-tb-btn.active svg {
+  stroke: #ffffff !important;
 }
-.image-align-toolbar .img-tb-btn svg {
+#image-bubble-menu .img-tb-btn svg {
   display: block !important;
   pointer-events: none !important;
   margin: 0 !important;
+  width: 13px !important;
+  height: 13px !important;
 }
 
-.image-align-toolbar .img-tb-btn[data-size] {
-  min-width: 34px !important;
+#image-bubble-menu .img-tb-btn[data-size] {
+  min-width: 32px !important;
   padding: 0 4px !important;
   font-size: 10.5px !important;
   font-weight: 600 !important;
   font-variant-numeric: tabular-nums !important;
-  letter-spacing: -0.02em !important;
+  letter-spacing: -0.01em !important;
 }
 
-.image-align-toolbar .img-tb-sep {
+#image-bubble-menu .img-tb-sep {
   width: 1px !important;
-  height: 16px !important;
-  background: var(--border2) !important;
+  height: 14px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
   margin: 0 1px !important;
   flex: 0 0 1px !important;
 }
+body.scheme-light #image-bubble-menu .img-tb-sep {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
 
-.image-align-toolbar .img-tb-alt {
+#image-bubble-menu .img-tb-alt {
   font-size: 10px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.05em !important;
-  padding: 0 6px !important;
-  min-width: 28px !important;
+  letter-spacing: 0.04em !important;
+  padding: 0 5px !important;
+  min-width: 26px !important;
 }
 
-.image-align-toolbar .img-tb-delete {
-  color: #f43f5e !important;
+#image-bubble-menu .img-tb-delete {
+  color: #f87171 !important;
 }
-.image-align-toolbar .img-tb-delete:hover {
-  background: rgba(244, 63, 94, 0.18) !important;
-  color: #f43f5e !important;
+#image-bubble-menu .img-tb-delete:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
 }
 
 /* ── Writing Desk: Slash Command Palette ─────────────────────── */
@@ -1950,8 +2044,9 @@ mark.find-match.current {
 }
 .ProseMirror img.align-center,
 .prose-editor img.align-center,
-img.align-center,
-[data-align="center"] {
+.desk-sheet img.align-center,
+.ProseMirror img[data-align="center"],
+.desk-sheet img[data-align="center"] {
   display: block !important;
   margin: 1.5rem auto !important;
   float: none !important;
@@ -1959,24 +2054,27 @@ img.align-center,
 }
 .ProseMirror img.align-left,
 .prose-editor img.align-left,
-img.align-left,
-[data-align="left"] {
+.desk-sheet img.align-left,
+.ProseMirror img[data-align="left"],
+.desk-sheet img[data-align="left"] {
   float: left !important;
   margin: 0.6rem 1.6rem 1rem 0 !important;
   display: block !important;
 }
 .ProseMirror img.align-right,
 .prose-editor img.align-right,
-img.align-right,
-[data-align="right"] {
+.desk-sheet img.align-right,
+.ProseMirror img[data-align="right"],
+.desk-sheet img[data-align="right"] {
   float: right !important;
   margin: 0.6rem 0 1rem 1.6rem !important;
   display: block !important;
 }
 .ProseMirror img.align-full,
 .prose-editor img.align-full,
-img.align-full,
-[data-align="full"] {
+.desk-sheet img.align-full,
+.ProseMirror img[data-align="full"],
+.desk-sheet img[data-align="full"] {
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -3269,7 +3367,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   const pmMount = document.getElementById('prosemirror-mount');
   const fallbackEditor = document.getElementById('editor');
   const rawEditor = document.getElementById('raw-editor');
+  const markdownEditor = document.getElementById('markdown-editor');
   const contentInput = document.getElementById('content-input');
+  const fmtInput = document.getElementById('content-format-input');
   const postTitle = document.getElementById('post-title');
   const bubbleMenu = document.getElementById('bubble-menu');
   const imageBubbleMenu = document.getElementById('image-bubble-menu');
@@ -3284,7 +3384,11 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   const deskStatusPill = document.getElementById('desk-status-pill');
 
   let isDirty = false;
-  let originalHtml = contentInput?.value || '';
+  let initialFormat = <?= json_encode($content_format) ?>;
+  let originalHtml = <?= json_encode($initial_html) ?>;
+  let originalMarkdown = <?= json_encode($initial_markdown) ?>;
+  window.currentEditorMode = initialFormat === 'markdown' ? 'markdown' : 'wysiwyg';
+  let mode = window.currentEditorMode;
 
   // 1. UPDATE METRICS (Words & Reading Time)
   function updateMetrics(text) {
@@ -3564,7 +3668,8 @@ const htmlToolbar  = document.getElementById('html-toolbar');
 
   // 4. FLOATING BUBBLE SELECTION MENU & IMAGE ALIGNMENT MENU
   function updateBubblePosition(editor) {
-    if (mode !== 'visual' || isRawMode) {
+    const isWysiwyg = (window.currentEditorMode === 'wysiwyg' || mode === 'wysiwyg' || mode === 'visual');
+    if (!isWysiwyg || isRawMode) {
       hideImageBubble();
       if (bubbleMenu) bubbleMenu.style.display = 'none';
       return;
@@ -3597,15 +3702,15 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         let left, top;
         if (imgRect && imgRect.width > 0) {
           left = imgRect.left + (imgRect.width / 2) - (menuRect.width / 2);
-          top = imgRect.top - menuRect.height - 10;
+          top = imgRect.top - menuRect.height - 8;
           if (top < 10) {
-            top = imgRect.bottom + 10;
+            top = imgRect.bottom + 8;
           }
         } else {
           const start = view.coordsAtPos(from);
           const end = view.coordsAtPos(to);
           left = ((start.left + end.left) / 2) - (menuRect.width / 2);
-          top = start.top - menuRect.height - 10;
+          top = start.top - menuRect.height - 8;
         }
 
         imageBubbleMenu.style.position = 'fixed';
@@ -3703,14 +3808,40 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   });
 
+  function findImagePos(img, view) {
+    if (!img || !view) return null;
+    try {
+      const rawPos = view.posAtDOM(img, 0);
+      if (typeof rawPos === 'number') {
+        if (view.state.doc.nodeAt(rawPos)?.type?.name === 'image') return rawPos;
+        if (rawPos > 0 && view.state.doc.nodeAt(rawPos - 1)?.type?.name === 'image') return rawPos - 1;
+      }
+    } catch(e) {}
+    try {
+      const src = img.getAttribute('src');
+      let found = null;
+      view.state.doc.descendants((node, pos) => {
+        if (found !== null) return false;
+        if (node.type.name === 'image' && node.attrs.src === src) {
+          found = pos;
+          return false;
+        }
+      });
+      return found;
+    } catch(e) {}
+    return null;
+  }
+
   // Handle delete image button
   imageBubbleMenu?.querySelector('#img-btn-delete')?.addEventListener('mousedown', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     hideImageBubble();
     if (window.pmEditor) {
       window.pmEditor.chain().focus().deleteSelection().run();
       hideImageBubble();
-      setTimeout(hideImageBubble, 50);
+      setTimeout(hideImageBubble, 30);
+      setTimeout(hideImageBubble, 100);
     }
   });
 
@@ -3718,9 +3849,10 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   pmMount?.addEventListener('click', (e) => {
     const img = e.target.closest('img');
     if (img && window.pmEditor) {
-      const pos = window.pmEditor.view.posAtDOM(img, 0);
+      const pos = findImagePos(img, window.pmEditor.view);
       if (typeof pos === 'number' && pos >= 0) {
         window.pmEditor.chain().focus().setNodeSelection(pos).run();
+        updateBubblePosition(window.pmEditor);
       }
     }
   });
@@ -3942,45 +4074,248 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   }, { passive: true });
 
-  // 6. RAW / VISUAL SWITCHER
-  const switchRaw = document.getElementById('switch-raw');
-  let isRawMode = false;
+  // 6. EDITOR MODE SWITCHER: WYSIWYG, RAW, MARKDOWN
+  function htmlToMarkdown(html) {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
 
-  if (switchRaw) {
-    switchRaw.addEventListener('click', (e) => {
-      e.preventDefault();
-      isRawMode = !isRawMode;
-      switchRaw.classList.toggle('btn-primary', isRawMode);
-      switchRaw.classList.toggle('btn-secondary', !isRawMode);
-      switchRaw.textContent = isRawMode ? 'Visual' : 'RAW';
-
-      if (isRawMode) {
-        // Switch to RAW
-        const html = window.pmEditor ? window.pmEditor.getHTML() : (fallbackEditor?.innerHTML || '');
-        if (rawEditor) {
-          rawEditor.value = html;
-          rawEditor.style.display = 'block';
-        }
-        if (pmMount) pmMount.style.display = 'none';
-        if (fallbackEditor) fallbackEditor.style.display = 'none';
-        closeSlashMenu();
-        if (bubbleMenu) bubbleMenu.style.display = 'none';
-        hideImageBubble();
-      } else {
-        // Switch to Visual
-        const rawHtml = rawEditor ? rawEditor.value : '';
-        if (window.pmEditor) {
-          window.pmEditor.commands.setContent(rawHtml);
-          pmMount.style.display = 'block';
-        } else if (fallbackEditor) {
-          fallbackEditor.innerHTML = rawHtml;
-          fallbackEditor.style.display = 'block';
-        }
-        if (rawEditor) rawEditor.style.display = 'none';
-        hideImageBubble();
+    function walk(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent;
       }
-    });
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+      }
+
+      const tag = node.tagName.toLowerCase();
+      const inner = Array.from(node.childNodes).map(walk).join('');
+
+      switch (tag) {
+        case 'h1': return `\n\n# ${inner.trim()}\n\n`;
+        case 'h2': return `\n\n## ${inner.trim()}\n\n`;
+        case 'h3': return `\n\n### ${inner.trim()}\n\n`;
+        case 'h4': return `\n\n#### ${inner.trim()}\n\n`;
+        case 'h5': return `\n\n##### ${inner.trim()}\n\n`;
+        case 'h6': return `\n\n###### ${inner.trim()}\n\n`;
+        case 'p': return `\n\n${inner.trim()}\n\n`;
+        case 'br': return "\n";
+        case 'hr': return "\n\n---\n\n";
+        case 'strong':
+        case 'b': return `**${inner.trim()}**`;
+        case 'em':
+        case 'i': return `*${inner.trim()}*`;
+        case 'del':
+        case 's':
+        case 'strike': return `~~${inner.trim()}~~`;
+        case 'code':
+          if (node.parentNode && node.parentNode.tagName.toLowerCase() === 'pre') {
+            return inner;
+          }
+          return `\`${inner}\``;
+        case 'pre': {
+          const code = node.querySelector('code');
+          const lang = code ? (code.className.match(/language-(\w+)/)?.[1] || '') : '';
+          const txt = code ? code.textContent : node.textContent;
+          return `\n\n\`\`\`${lang}\n${txt.trim()}\n\`\`\`\n\n`;
+        }
+        case 'blockquote': {
+          const lines = inner.trim().split('\n');
+          return '\n\n' + lines.map(l => `> ${l}`).join('\n') + '\n\n';
+        }
+        case 'ul': {
+          const items = Array.from(node.children)
+            .filter(c => c.tagName.toLowerCase() === 'li')
+            .map(li => `- ${walk(li).trim()}`)
+            .join('\n');
+          return `\n\n${items}\n\n`;
+        }
+        case 'ol': {
+          let idx = 1;
+          const items = Array.from(node.children)
+            .filter(c => c.tagName.toLowerCase() === 'li')
+            .map(li => `${idx++}. ${walk(li).trim()}`)
+            .join('\n');
+          return `\n\n${items}\n\n`;
+        }
+        case 'li': return inner.trim();
+        case 'a': {
+          const href = node.getAttribute('href') || '';
+          const title = node.getAttribute('title');
+          const titlePart = title ? ` "${title}"` : '';
+          return `[${inner.trim() || href}](${href}${titlePart})`;
+        }
+        case 'img': {
+          const src = node.getAttribute('src') || '';
+          const alt = node.getAttribute('alt') || '';
+          const title = node.getAttribute('title');
+          const titlePart = title ? ` "${title}"` : '';
+          return `![${alt}](${src}${titlePart})`;
+        }
+        case 'table': {
+          const rows = Array.from(node.querySelectorAll('tr'));
+          if (!rows.length) return '';
+          let md = '\n\n';
+          rows.forEach((tr, rIdx) => {
+            const cells = Array.from(tr.querySelectorAll('th, td'));
+            md += '| ' + cells.map(c => walk(c).trim().replace(/\|/g, '\\|')).join(' | ') + ' |\n';
+            if (rIdx === 0) {
+              md += '| ' + cells.map(() => '---').join(' | ') + ' |\n';
+            }
+          });
+          return md + '\n';
+        }
+        default:
+          if (['iframe', 'audio', 'video', 'figure', 'details', 'summary'].includes(tag)) {
+            return `\n\n${node.outerHTML}\n\n`;
+          }
+          return inner;
+      }
+    }
+
+    let res = walk(div);
+    res = res.replace(/\n{3,}/g, '\n\n').trim();
+    return res;
   }
+
+  function clientSimpleMarkdown(md) {
+    if (!md) return '<p></p>';
+    let html = md
+      .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+      .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
+      .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/~~(.*?)~~/gim, '<del>$1</del>')
+      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      .replace(/!\[(.*?)\]\((.*?)\)/gim, '<img alt="$1" src="$2">')
+      .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2">$1</a>')
+      .replace(/\n\n/gim, '</p><p>');
+    return '<p>' + html + '</p>';
+  }
+
+  window.markdownToHtmlSync = clientSimpleMarkdown;
+
+  async function markdownToHtml(md) {
+    if (!md || !md.trim()) return '<p></p>';
+    try {
+      const fd = new FormData();
+      fd.append('md', md);
+      const res = await fetch('markdown_preview.php', { method: 'POST', body: fd });
+      if (res.ok) {
+        const text = await res.text();
+        return text || '<p></p>';
+      }
+    } catch (e) {
+      console.warn('Server markdown parsing failed:', e);
+    }
+    return clientSimpleMarkdown(md);
+  }
+
+  async function switchEditorMode(newMode) {
+    if (newMode === mode) return;
+    const prevMode = mode;
+    mode = newMode;
+    window.currentEditorMode = newMode;
+
+    document.querySelectorAll('.editor-mode-switcher .mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === newMode);
+    });
+
+    hideImageBubble();
+    if (slashMenu) slashMenu.style.display = 'none';
+    if (bubbleMenu) bubbleMenu.style.display = 'none';
+
+    let currentHtml = '';
+    let currentMd = '';
+
+    if (prevMode === 'wysiwyg') {
+      currentHtml = window.pmEditor ? window.pmEditor.getHTML() : (fallbackEditor?.innerHTML || '');
+    } else if (prevMode === 'raw') {
+      currentHtml = rawEditor ? rawEditor.value : '';
+    } else if (prevMode === 'markdown') {
+      currentMd = markdownEditor ? markdownEditor.value : '';
+    }
+
+    if (newMode === 'wysiwyg') {
+      let targetHtml = currentHtml;
+      if (prevMode === 'markdown') {
+        targetHtml = await markdownToHtml(currentMd);
+      }
+      if (window.pmEditor) {
+        window.pmEditor.commands.setContent(targetHtml || '<p></p>');
+        if (pmMount) pmMount.style.display = 'block';
+      } else if (fallbackEditor) {
+        fallbackEditor.innerHTML = targetHtml || '';
+        fallbackEditor.style.display = 'block';
+      }
+      if (rawEditor) rawEditor.style.display = 'none';
+      if (markdownEditor) markdownEditor.style.display = 'none';
+      if (contentInput) contentInput.value = targetHtml;
+      if (fmtInput) fmtInput.value = 'html';
+      updateMetrics(window.pmEditor ? window.pmEditor.getText() : (fallbackEditor?.innerText || ''));
+
+    } else if (newMode === 'raw') {
+      let targetHtml = currentHtml;
+      if (prevMode === 'markdown') {
+        targetHtml = await markdownToHtml(currentMd);
+      }
+      if (rawEditor) {
+        rawEditor.value = targetHtml;
+        rawEditor.style.display = 'block';
+      }
+      if (pmMount) pmMount.style.display = 'none';
+      if (fallbackEditor) fallbackEditor.style.display = 'none';
+      if (markdownEditor) markdownEditor.style.display = 'none';
+      if (contentInput) contentInput.value = targetHtml;
+      if (fmtInput) fmtInput.value = 'html';
+      updateMetrics(rawEditor ? rawEditor.value : '');
+
+    } else if (newMode === 'markdown') {
+      let targetMd = currentMd;
+      if (prevMode === 'wysiwyg' || prevMode === 'raw') {
+        targetMd = htmlToMarkdown(currentHtml);
+      }
+      if (markdownEditor) {
+        markdownEditor.value = targetMd;
+        markdownEditor.style.display = 'block';
+      }
+      if (pmMount) pmMount.style.display = 'none';
+      if (fallbackEditor) fallbackEditor.style.display = 'none';
+      if (rawEditor) rawEditor.style.display = 'none';
+      if (contentInput) contentInput.value = targetMd;
+      if (fmtInput) fmtInput.value = 'markdown';
+      updateMetrics(markdownEditor ? markdownEditor.value : '');
+    }
+
+    markDirty();
+  }
+
+  window.switchEditorMode = switchEditorMode;
+
+  document.querySelectorAll('.editor-mode-switcher .mode-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchEditorMode(btn.dataset.mode);
+    });
+  });
+
+  markdownEditor?.addEventListener('input', () => {
+    markDirty();
+    updateMetrics(markdownEditor.value);
+    if (window.triggerAutosave) window.triggerAutosave();
+  });
+
+  rawEditor?.addEventListener('input', () => {
+    markDirty();
+    updateMetrics(rawEditor.value);
+    if (window.triggerAutosave) window.triggerAutosave();
+  });
 
   // 7. FIND & REPLACE (Ctrl+F / Ctrl+H)
   const findInput = document.getElementById('find-input');
@@ -4257,25 +4592,29 @@ function showAutosaveMsg(msg, color) {
 }
 
 function getCurrentContent() {
+  const curMode = window.currentEditorMode || mode;
+  if (curMode === 'markdown') {
+    const mdEd = document.getElementById('markdown-editor');
+    return mdEd ? mdEd.value : '';
+  }
+  if (curMode === 'raw') {
+    const rawEd = document.getElementById('raw-editor');
+    return rawEd ? rawEd.value : '';
+  }
   if (window.pmEditor) {
     return window.pmEditor.getHTML();
   }
-  if (mode === 'raw') {
-    // Get content from raw HTML editor
-    return rawEditor ? rawEditor.value : '';
-  } else {
-    // For visual editor, get the innerHTML
-    const editor = document.getElementById('editor');
-    return editor ? editor.innerHTML : (contentInput ? contentInput.value : '');
-  }
+  const editor = document.getElementById('editor');
+  return editor ? editor.innerHTML : (contentInput ? contentInput.value : '');
 }
 
 function getFormData() {
+  const curMode = window.currentEditorMode || mode;
   const titleEl = document.getElementById('post-title');
   return {
     title:          titleEl ? titleEl.value.trim() : '',
     content:        getCurrentContent(),
-    content_format: 'html',
+    content_format: curMode === 'markdown' ? 'markdown' : 'html',
     excerpt:        document.querySelector('[name="excerpt"]')?.value || '',
     categories:     document.getElementById('cat-hidden')?.value || '',
     tags:           document.getElementById('tag-hidden')?.value || '',
@@ -4398,75 +4737,46 @@ document.getElementById('editor-form')?.addEventListener('submit', () => {
 
 // Function to sync content before save
 function syncContentBeforeSave() {
-  if (window.pmEditor) {
-    const pmHtml = window.pmEditor.getHTML();
-    if (contentInput) contentInput.value = pmHtml;
-    const edHid = document.getElementById('editor-hidden');
-    if (edHid) edHid.value = pmHtml;
+  const curMode = window.currentEditorMode || mode;
+  const contentInput = document.getElementById('content-input');
+  const fmtInput = document.getElementById('content-format-input');
+  const edHid = document.getElementById('editor-hidden');
+
+  if (curMode === 'markdown') {
+    const mdEd = document.getElementById('markdown-editor');
+    const mdContent = mdEd ? mdEd.value : '';
+    if (contentInput) contentInput.value = mdContent;
+    if (fmtInput) fmtInput.value = 'markdown';
+    if (edHid) edHid.value = mdContent;
     return;
   }
-  
-  if (mode === 'raw') {
-    const rawContent = rawEditor ? rawEditor.value : '';
-    contentInput.value = rawContent;
-    const edHid = document.getElementById('editor-hidden');
+
+  if (curMode === 'raw') {
+    const rawEd = document.getElementById('raw-editor');
+    const rawContent = rawEd ? rawEd.value : '';
+    if (contentInput) contentInput.value = rawContent;
+    if (fmtInput) fmtInput.value = 'html';
     if (edHid) edHid.value = rawContent;
+    return;
+  }
+
+  // WYSIWYG
+  let htmlContent = '';
+  if (window.pmEditor) {
+    htmlContent = window.pmEditor.getHTML();
   } else {
     const editor = document.getElementById('editor');
-    const htmlContent = editor ? editor.innerHTML : '';
-    contentInput.value = htmlContent;
-    const edHid = document.getElementById('editor-hidden');
-    if (edHid) edHid.value = htmlContent;
+    htmlContent = editor ? editor.innerHTML : '';
   }
-  
-  fmtInput.value = 'html';
-  contentInput.dispatchEvent(new Event('change', { bubbles: true }));
+  if (contentInput) contentInput.value = htmlContent;
+  if (fmtInput) fmtInput.value = 'html';
+  if (edHid) edHid.value = htmlContent;
 }
 
-// ── Mode switch Visual ↔ RAW ───────────────────────────────────────────────
-document.getElementById('switch-visual')?.addEventListener('click', function(e) {
-  e.preventDefault();
-  switchMode('visual');
-  this.classList.add('active');
-  document.getElementById('switch-raw')?.classList.remove('active');
-});
-
-document.getElementById('switch-raw')?.addEventListener('click', function(e) {
-  e.preventDefault();
-  switchMode(mode === 'raw' ? 'visual' : 'raw');
-});
-
 function switchMode(newMode) {
-  if (newMode === mode) return;
-  const pmMount = document.getElementById('prosemirror-mount');
-  const visualEditor = document.getElementById('editor');
-  const rawEditor = document.getElementById('raw-editor');
-
-  if (newMode === 'raw') {
-    let htmlContent = window.pmEditor ? window.pmEditor.getHTML() : (visualEditor ? visualEditor.innerHTML : '');
-    if (rawEditor) {
-      rawEditor.value = htmlContent;
-      rawEditor.style.display = 'block';
-    }
-    if (pmMount) pmMount.style.display = 'none';
-    if (visualEditor) visualEditor.style.display = 'none';
-  } else {
-    let rawContent = rawEditor ? rawEditor.value : '';
-    if (window.pmEditor) {
-      window.pmEditor.commands.setContent(rawContent);
-      if (pmMount) pmMount.style.display = 'block';
-    } else if (visualEditor) {
-      visualEditor.innerHTML = rawContent;
-      visualEditor.style.display = 'block';
-    }
-    if (rawEditor) rawEditor.style.display = 'none';
+  if (window.switchEditorMode) {
+    window.switchEditorMode(newMode === 'visual' ? 'wysiwyg' : newMode);
   }
-
-  mode = newMode;
-  fmtInput.value = 'html';
-  document.getElementById('switch-visual')?.classList.toggle('active', mode === 'visual');
-  document.getElementById('switch-raw')?.classList.toggle('active', mode === 'raw');
-  document.getElementById('switch-raw')?.classList.toggle('btn-primary', mode === 'raw');
 }
 
 // ── HTML Editor Toolbar ──────────────────────────────────────────────────
@@ -5074,11 +5384,10 @@ function openPreview() {
   const adminBase = siteBase + '/admin';
   
   // Get current content
-  let content = '';
-  if (mode === 'raw') {
-    content = rawEditor.value;
-  } else {
-    content = document.getElementById('editor').innerHTML;
+  let content = getCurrentContent();
+  const curMode = window.currentEditorMode || mode;
+  if (curMode === 'markdown') {
+    content = window.markdownToHtmlSync ? window.markdownToHtmlSync(content) : content;
   }
   
   const title   = document.getElementById('post-title').value || '(Sin título)';
@@ -5869,7 +6178,30 @@ function finishImageInsert(url, alt) {
   if (window._imgModalCallback && typeof window._imgModalCallback === 'function') {
     window._imgModalCallback(url, alt);
   } else {
-    if (window.pmEditor) {
+    const curMode = window.currentEditorMode || mode;
+    if (curMode === 'markdown') {
+      const mdEd = document.getElementById('markdown-editor');
+      if (mdEd) {
+        const mdImg = `![${alt || ''}](${url})\n`;
+        const start = mdEd.selectionStart || 0;
+        const end = mdEd.selectionEnd || 0;
+        mdEd.value = mdEd.value.substring(0, start) + mdImg + mdEd.value.substring(end);
+        mdEd.selectionStart = mdEd.selectionEnd = start + mdImg.length;
+        mdEd.focus();
+        mdEd.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else if (curMode === 'raw') {
+      const rawEd = document.getElementById('raw-editor');
+      if (rawEd) {
+        const htmlImg = `<img src="${url}" alt="${alt || ''}" class="prose-image align-center">\n`;
+        const start = rawEd.selectionStart || 0;
+        const end = rawEd.selectionEnd || 0;
+        rawEd.value = rawEd.value.substring(0, start) + htmlImg + rawEd.value.substring(end);
+        rawEd.selectionStart = rawEd.selectionEnd = start + htmlImg.length;
+        rawEd.focus();
+        rawEd.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else if (window.pmEditor) {
       window.pmEditor.chain().focus().setImage({ src: url, alt: alt || '' }).run();
     } else {
       const editor = document.getElementById('editor');
