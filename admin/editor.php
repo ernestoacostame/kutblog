@@ -311,9 +311,15 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
 
                 <div class="img-tb-sep"></div>
 
-                <!-- Group 3: Alt Text & Delete -->
+                <!-- Group 3: Alt Text, Link & Delete -->
                 <div class="img-tb-group" role="group" aria-label="Acciones">
                   <button type="button" class="img-tb-btn bubble-btn img-tb-alt" id="img-btn-alt" title="Editar texto alternativo (alt)">ALT</button>
+                  <button type="button" class="img-tb-btn bubble-btn img-tb-link" id="img-btn-link" title="Insertar o editar enlace (abrir en pestaña nueva)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                  </button>
                   <button type="button" class="img-tb-btn bubble-btn img-tb-delete" id="img-btn-delete" title="Eliminar imagen">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="3 6 5 6 21 6"></polyline>
@@ -3595,10 +3601,12 @@ const htmlToolbar  = document.getElementById('html-toolbar');
           align: {
             default: 'center',
             parseHTML: element => {
-              if (element.classList.contains('align-left') || element.getAttribute('data-align') === 'left' || element.style.float === 'left') return 'left';
-              if (element.classList.contains('align-right') || element.getAttribute('data-align') === 'right' || element.style.float === 'right') return 'right';
-              if (element.classList.contains('align-full') || element.getAttribute('data-align') === 'full') return 'full';
-              if (element.classList.contains('align-center') || element.getAttribute('data-align') === 'center' || element.style.margin?.includes('auto')) return 'center';
+              const a = element.getAttribute('data-align');
+              if (a && ['left', 'right', 'center', 'full'].includes(a)) return a;
+              if (element.classList.contains('align-left') || element.style.float === 'left') return 'left';
+              if (element.classList.contains('align-right') || element.style.float === 'right') return 'right';
+              if (element.classList.contains('align-full')) return 'full';
+              if (element.classList.contains('align-center') || element.style.margin?.includes('auto')) return 'center';
               return 'center';
             },
             renderHTML: attributes => {
@@ -3608,12 +3616,26 @@ const htmlToolbar  = document.getElementById('html-toolbar');
                 class: `prose-image align-${a}`
               };
             }
+          },
+          href: {
+            default: null,
+            parseHTML: element => {
+              const parentA = element.closest('a');
+              return element.getAttribute('data-href') || (parentA ? parentA.getAttribute('href') : null) || element.getAttribute('href') || null;
+            },
+            renderHTML: attributes => {
+              if (!attributes.href) return {};
+              return {
+                'data-href': attributes.href
+              };
+            }
           }
         };
       },
       renderHTML({ node, HTMLAttributes }) {
         const align = node.attrs.align || 'center';
         const width = node.attrs.width || null;
+        const href = node.attrs.href || null;
         let style = '';
 
         if (align === 'left') {
@@ -3641,6 +3663,21 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         };
         if (width) {
           mergedAttrs.width = width;
+        }
+
+        if (href) {
+          mergedAttrs['data-href'] = href;
+          return [
+            'a',
+            {
+              href: href,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              class: `prose-image-link align-${align}`,
+              style: align === 'left' ? 'float: left; display: block; clear: none;' : (align === 'right' ? 'float: right; display: block; clear: none;' : (align === 'full' ? 'display: block; width: 100%;' : 'display: block; text-align: center;'))
+            },
+            ['img', mergedAttrs]
+          ];
         }
 
         return ['img', mergedAttrs];
@@ -3732,6 +3769,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     pmMount.addEventListener('click', (e) => {
       const img = e.target.closest('img');
       if (img && window.pmEditor) {
+        e.preventDefault();
         try {
           const pos = window.pmEditor.view.posAtDOM(img, 0);
           if (typeof pos === 'number') {
@@ -3811,6 +3849,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         const attrs = editor.getAttributes('image');
         const align = attrs.align || 'center';
         const width = attrs.width || '100%';
+        const href = attrs.href || '';
 
         imageBubbleMenu.querySelectorAll('[data-img-align]').forEach(btn => {
           btn.classList.toggle('active', btn.getAttribute('data-img-align') === align);
@@ -3819,6 +3858,12 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         imageBubbleMenu.querySelectorAll('[data-size]').forEach(btn => {
           btn.classList.toggle('active', btn.getAttribute('data-size') === width || (width === '100%' && btn.getAttribute('data-size') === '100%'));
         });
+
+        const linkBtn = imageBubbleMenu.querySelector('#img-btn-link');
+        if (linkBtn) {
+          linkBtn.classList.toggle('active', Boolean(href));
+          linkBtn.title = href ? `Enlace: ${href} (clic para editar o quitar)` : 'Insertar o editar enlace (abrir en pestaña nueva)';
+        }
 
         const view = editor.view;
         let nodeDom = null;
@@ -3954,6 +3999,28 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   });
 
+  imageBubbleMenu?.querySelector('#img-btn-link')?.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    if (window.pmEditor) {
+      const currentHref = window.pmEditor.getAttributes('image').href || '';
+      const newHref = prompt('Introduce la URL del enlace para la imagen (se abrirá en pestaña nueva, o déjalo vacío para eliminarlo):', currentHref);
+      if (newHref !== null) {
+        const clean = newHref.trim();
+        if (clean === '') {
+          window.pmEditor.chain().focus().updateAttributes('image', { href: null }).run();
+        } else {
+          let finalHref = clean;
+          if (!/^https?:\/\//i.test(finalHref) && !finalHref.startsWith('/') && !finalHref.startsWith('#')) {
+            finalHref = 'https://' + finalHref;
+          }
+          window.pmEditor.chain().focus().updateAttributes('image', { href: finalHref }).run();
+        }
+        updateBubblePosition(window.pmEditor);
+        setTimeout(() => { if (window.pmEditor) updateBubblePosition(window.pmEditor); }, 30);
+      }
+    }
+  });
+
   function findImagePos(img, view) {
     if (!img || !view) return null;
     try {
@@ -3995,6 +4062,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   pmMount?.addEventListener('click', (e) => {
     const img = e.target.closest('img');
     if (img && window.pmEditor) {
+      e.preventDefault();
       const pos = findImagePos(img, window.pmEditor.view);
       if (typeof pos === 'number' && pos >= 0) {
         window.pmEditor.chain().focus().setNodeSelection(pos).run();
