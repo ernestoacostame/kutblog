@@ -4121,6 +4121,29 @@ const htmlToolbar  = document.getElementById('html-toolbar');
   let slashIsScrolling = false;
   let lastSlashExecTime = 0;
 
+  function getVisibleSlashItems() {
+    if (!slashMenu) return [];
+    return Array.from(slashMenu.querySelectorAll('.slash-item')).filter(it => it.style.display !== 'none');
+  }
+
+  function filterSlashItems(query = '') {
+    if (!slashMenu) return 0;
+    const allItems = slashMenu.querySelectorAll('.slash-item');
+    let count = 0;
+    allItems.forEach(it => {
+      const cmd = (it.getAttribute('data-cmd') || '').toLowerCase();
+      const title = (it.querySelector('.slash-title')?.textContent || '').toLowerCase();
+      const desc = (it.querySelector('.slash-desc')?.textContent || '').toLowerCase();
+      const match = !query || cmd.includes(query) || title.includes(query) || desc.includes(query);
+      it.style.display = match ? 'flex' : 'none';
+      if (match) count++;
+    });
+    const visible = getVisibleSlashItems();
+    if (slashIdx >= visible.length) slashIdx = 0;
+    updateSlashSelection(false);
+    return count;
+  }
+
   function closeSlashMenu() {
     slashActive = false;
     slashIsScrolling = false;
@@ -4144,18 +4167,26 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     // Clean invisible characters like zero-width spaces (\u200B, \uFEFF) and NBSP (\u00A0)
     // which iOS Safari / WebKit automatically inserts into empty contenteditable blocks
     const rawText = $from.parent.textContent || '';
-    const cleanText = rawText.replace(/[\u200B\uFEFF\u00A0\s]/g, '');
+    const cleanText = rawText.replace(/[\u200B\uFEFF\u00A0]/g, '').trimStart();
 
-    if (cleanText === '/') {
-      openSlashMenu();
-    } else if (slashActive && !rawText.includes('/')) {
+    if (cleanText.startsWith('/')) {
+      const query = cleanText.slice(1).toLowerCase().trim();
+      openSlashMenu(query);
+    } else if (slashActive) {
       closeSlashMenu();
     }
   }
   window.checkSlashTrigger = checkSlashTrigger;
 
-  function openSlashMenu() {
+  function openSlashMenu(query = '') {
     if (!slashMenu || !window.pmEditor) return;
+
+    const count = filterSlashItems(query);
+    if (count === 0) {
+      closeSlashMenu();
+      return;
+    }
+
     const { from } = window.pmEditor.state.selection;
     let coords = null;
     try {
@@ -4167,7 +4198,6 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     slashMenu.style.display = 'block';
     slashActive = true;
     slashIsScrolling = false;
-    slashIdx = 0;
     slashMenu.scrollTop = 0;
     updateSlashSelection(false);
 
@@ -4212,7 +4242,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
 
   function updateSlashSelection(scroll = false) {
     if (!slashMenu) return;
-    const items = slashMenu.querySelectorAll('.slash-item');
+    const items = getVisibleSlashItems();
     items.forEach((it, i) => {
       it.classList.toggle('active', i === slashIdx);
       if (scroll && i === slashIdx) {
@@ -4225,38 +4255,38 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     closeSlashMenu();
     if (!window.pmEditor) return;
 
-    const { $from } = window.pmEditor.state.selection;
+    const editor = window.pmEditor;
+    const { $from } = editor.state.selection;
     const from = $from.start();
     const to = $from.end();
-    const chain = window.pmEditor.chain().focus();
     if (to > from) {
-      chain.deleteRange({ from, to });
+      editor.chain().focus().deleteRange({ from, to }).run();
     }
 
     switch (cmd) {
       case 'h2':
-        chain.toggleHeading({ level: 2 }).run();
+        editor.chain().focus().toggleHeading({ level: 2 }).run();
         break;
       case 'h3':
-        chain.toggleHeading({ level: 3 }).run();
+        editor.chain().focus().toggleHeading({ level: 3 }).run();
         break;
       case 'quote':
-        chain.toggleBlockquote().run();
+        editor.chain().focus().toggleBlockquote().run();
         break;
       case 'callout':
-        chain.insertContent('<blockquote class="callout-note"><strong>💡 Nota:</strong> Escribe tu apunte destacado aquí...</blockquote><p></p>').run();
+        editor.chain().focus().insertContent('<blockquote class="callout-note"><strong>💡 Nota:</strong> Escribe tu apunte destacado aquí...</blockquote><p></p>').run();
         break;
       case 'code':
-        chain.toggleCodeBlock().run();
+        editor.chain().focus().toggleCodeBlock().run();
         break;
       case 'ul':
-        chain.toggleBulletList().run();
+        editor.chain().focus().toggleBulletList().run();
         break;
       case 'ol':
-        chain.toggleOrderedList().run();
+        editor.chain().focus().toggleOrderedList().run();
         break;
       case 'table':
-        chain.insertContent('<table style="width:100%; border-collapse:collapse; margin:1.25rem 0; border:1px solid var(--border);"><thead><tr style="background:var(--bg3);"><th style="border:1px solid var(--border); padding:8px 12px; text-align:left;">Encabezado 1</th><th style="border:1px solid var(--border); padding:8px 12px; text-align:left;">Encabezado 2</th></tr></thead><tbody><tr><td style="border:1px solid var(--border); padding:8px 12px;">Dato 1</td><td style="border:1px solid var(--border); padding:8px 12px;">Dato 2</td></tr><tr><td style="border:1px solid var(--border); padding:8px 12px;">Dato 3</td><td style="border:1px solid var(--border); padding:8px 12px;">Dato 4</td></tr></tbody></table><p></p>').run();
+        editor.chain().focus().insertContent('<table style="width:100%; border-collapse:collapse; margin:1.25rem 0; border:1px solid var(--border);"><thead><tr style="background:var(--bg3);"><th style="border:1px solid var(--border); padding:8px 12px; text-align:left;">Encabezado 1</th><th style="border:1px solid var(--border); padding:8px 12px; text-align:left;">Encabezado 2</th></tr></thead><tbody><tr><td style="border:1px solid var(--border); padding:8px 12px;">Dato 1</td><td style="border:1px solid var(--border); padding:8px 12px;">Dato 2</td></tr><tr><td style="border:1px solid var(--border); padding:8px 12px;">Dato 3</td><td style="border:1px solid var(--border); padding:8px 12px;">Dato 4</td></tr></tbody></table><p></p>').run();
         break;
       case 'image':
         insertImage();
@@ -4264,7 +4294,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       case 'audio':
         const audioUrl = prompt('Introduce la URL del audio (MP3, OGG, WAV o podcast):');
         if (audioUrl) {
-          chain.insertContent(`<div class="media-audio"><audio controls src="${audioUrl}" style="width:100%;"></audio></div><p></p>`).run();
+          editor.chain().focus().insertContent(`<div class="media-audio"><audio controls src="${audioUrl}" style="width:100%;"></audio></div><p></p>`).run();
         }
         break;
       case 'video':
@@ -4273,28 +4303,33 @@ const htmlToolbar  = document.getElementById('html-toolbar');
           const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
           const vmMatch = videoUrl.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/i);
           if (ytMatch && ytMatch[1]) {
-            chain.insertContent(`<div class="yt-embed"><iframe src="https://www.youtube-nocookie.com/embed/${ytMatch[1]}" allowfullscreen loading="lazy"></iframe></div><p></p>`).run();
+            editor.chain().focus().insertContent(`<div class="yt-embed"><iframe src="https://www.youtube-nocookie.com/embed/${ytMatch[1]}" allowfullscreen loading="lazy"></iframe></div><p></p>`).run();
           } else if (vmMatch && vmMatch[1]) {
-            chain.insertContent(`<div class="yt-embed"><iframe src="https://player.vimeo.com/video/${vmMatch[1]}" allowfullscreen loading="lazy"></iframe></div><p></p>`).run();
+            editor.chain().focus().insertContent(`<div class="yt-embed"><iframe src="https://player.vimeo.com/video/${vmMatch[1]}" allowfullscreen loading="lazy"></iframe></div><p></p>`).run();
           } else {
-            chain.insertContent(`<div class="media-video"><video controls src="${videoUrl}" style="max-width:100%; border-radius:8px;"></video></div><p></p>`).run();
+            editor.chain().focus().insertContent(`<div class="media-video"><video controls src="${videoUrl}" style="max-width:100%; border-radius:8px;"></video></div><p></p>`).run();
           }
         }
         break;
       case 'hr':
-        chain.setHorizontalRule().run();
+        editor.chain().focus().setHorizontalRule().run();
         break;
       case 'align-left':
-        chain.setTextAlign('left').run();
+        editor.chain().focus().setTextAlign('left').run();
         break;
       case 'align-center':
-        chain.setTextAlign('center').run();
+        editor.chain().focus().setTextAlign('center').run();
         break;
       case 'align-right':
-        chain.setTextAlign('right').run();
+        editor.chain().focus().setTextAlign('right').run();
         break;
     }
   }
+
+  // Prevent blurring ProseMirror when interacting with slashMenu via mouse
+  slashMenu?.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+  });
 
   // Passive touch tracking on slashMenu to reliably distinguish tap from scroll
   slashMenu?.addEventListener('touchstart', (e) => {
@@ -4337,7 +4372,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   }
 
-  slashMenu?.querySelectorAll('.slash-item').forEach((item, idx) => {
+  slashMenu?.querySelectorAll('.slash-item').forEach((item) => {
     item.addEventListener('click', (e) => {
       triggerSlashItem(item, e);
     });
@@ -4349,37 +4384,48 @@ const htmlToolbar  = document.getElementById('html-toolbar');
 
     item.addEventListener('mouseenter', () => {
       if (!slashIsScrolling) {
-        slashIdx = idx;
-        updateSlashSelection(false);
+        const visible = getVisibleSlashItems();
+        const vIdx = visible.indexOf(item);
+        if (vIdx !== -1) {
+          slashIdx = vIdx;
+          updateSlashSelection(false);
+        }
       }
     });
   });
 
   window.addEventListener('keydown', (e) => {
     if (slashActive) {
-      const items = slashMenu.querySelectorAll('.slash-item');
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        slashIdx = (slashIdx + 1) % items.length;
-        updateSlashSelection(true);
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        slashIdx = (slashIdx - 1 + items.length) % items.length;
-        updateSlashSelection(true);
-        return;
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (items[slashIdx]) {
-          executeSlashCommand(items[slashIdx].getAttribute('data-cmd'));
+      const items = getVisibleSlashItems();
+      if (items.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          slashIdx = (slashIdx + 1) % items.length;
+          updateSlashSelection(true);
+          return;
         }
-        return;
-      }
-      if (e.key === 'Escape' || e.key === 'Backspace') {
-        closeSlashMenu();
-        return;
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          slashIdx = (slashIdx - 1 + items.length) % items.length;
+          updateSlashSelection(true);
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (items[slashIdx]) {
+            executeSlashCommand(items[slashIdx].getAttribute('data-cmd'));
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          closeSlashMenu();
+          return;
+        }
       }
     }
 
@@ -4388,7 +4434,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         checkSlashTrigger(window.pmEditor);
       }, 20);
     }
-  });
+  }, { capture: true });
 
   const handleOutsidePointer = (e) => {
     if (slashActive && !slashMenu.contains(e.target)) {
