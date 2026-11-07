@@ -283,6 +283,9 @@ return [
 
     // ── Updates / Actualizaciones ──────────────────────────────────────────
     'nav_updates'                  => 'Actualizaciones',
+    'cms_update_available_title'   => '¡Nueva versión disponible!',
+    'cms_update_available_desc'    => 'Hay una nueva versión de KutBlog (:version). Actualmente tienes instalada la v:current.',
+    'cms_update_now_btn'           => 'Actualizar ahora',
     'update_title'                 => 'Actualizaciones',
     'update_sub'                   => 'Mantén KutBlog al día · actualización con un click · rollback instantáneo',
     'update_installed_version'     => 'Versión instalada',

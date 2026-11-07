@@ -23,9 +23,21 @@ function admin_header(string $page_title = '', string $active = ''): void {
         'light'    => ['--bg:#fafaf9','--sidebar:#ffffff','--surface:#ffffff','--surface2:#f4f4f5','--border:#e4e4e7','--border2:#d4d4d8','--text:#09090b','--text2:#52525b','--muted:#71717a'],
     ];
     $scheme_vars = implode(';', $schemes[$admin_scheme] ?? $schemes['dark']);
+
+    require_once dirname(__DIR__) . '/core/updater.php';
+    $cms_update_cache = cms_update_cached();
+    $cms_update_available = false;
+    $cms_available_ver = '';
+    if ($cms_update_cache && !empty($cms_update_cache['available']) && !empty($cms_update_cache['new_version'])) {
+        if (version_compare($cms_update_cache['new_version'], CMS_VERSION, '>')) {
+            $cms_update_available = true;
+            $cms_available_ver = $cms_update_cache['new_version'];
+        }
+    }
+    $cms_check_stale = cms_update_cache_stale();
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?= htmlspecialchars(detect_admin_lang()) ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -442,6 +454,93 @@ body.scheme-light .floating-publish-btn {
 @media (min-width: 1025px) {
   .sidebar-overlay { display: none !important; }
 }
+
+/* Update notification banner */
+.update-notification-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  margin: 1.5rem 2rem 0.5rem 2rem;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.14) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: var(--radius);
+  color: var(--text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: fadeInBanner 0.25s ease-out;
+}
+@keyframes fadeInBanner {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.update-notification-banner .update-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.35);
+}
+.update-notification-banner .update-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+.update-notification-banner .update-banner-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.update-notification-banner .update-banner-desc {
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+.update-notification-banner .update-banner-desc strong {
+  color: var(--accent);
+}
+.update-notification-banner .update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.update-notification-banner .btn-update-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #ffffff !important;
+  text-decoration: none !important;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3);
+}
+.update-notification-banner .btn-update-banner:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.update-notification-banner .btn-dismiss-banner {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.update-notification-banner .btn-dismiss-banner:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
 </style>
 </head>
 <body class="scheme-<?= $admin_scheme ?>" id="admin-body">
@@ -542,9 +641,10 @@ body.scheme-light .floating-publish-btn {
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
       <span class="nav-label"><?= __("nav_themes") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/update.php" class="nav-item <?= $active === 'update' ? 'active' : '' ?>" data-label="Actualizaciones">
+    <a href="<?= base_url() ?>/admin/update.php" class="nav-item <?= $active === 'update' ? 'active' : '' ?>" data-label="Actualizaciones" style="display:flex;align-items:center;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
       <span class="nav-label"><?= __("nav_updates", "Actualizaciones") ?></span>
+      <span class="sidebar-update-badge" id="cms-update-badge" style="margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;<?= $cms_update_available ? '' : 'display:none;' ?>">v<?= htmlspecialchars($cms_available_ver) ?></span>
     </a>
 
     <div class="nav-section">Sitio</div>
@@ -590,7 +690,33 @@ body.scheme-light .floating-publish-btn {
           color:<?= $cur_lang==='en' ? '#ffffff' : 'var(--muted)' ?>;">EN</a>
       </div>
 
+  <div id="cms-update-banner" class="update-notification-banner" style="display:none;">
+    <div class="update-banner-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>
+    </div>
+    <div class="update-banner-body">
+      <div class="update-banner-title"><?= __('cms_update_available_title', '¡Nueva versión disponible!') ?></div>
+      <div class="update-banner-desc">
+        <?= __('cms_update_available_desc', [
+          'version' => '<strong id="cms-update-ver-label">v' . htmlspecialchars($cms_available_ver) . '</strong>',
+          'current' => CMS_VERSION
+        ]) ?>
+      </div>
+    </div>
+    <div class="update-banner-actions">
+      <a href="<?= base_url() ?>/admin/update.php" class="btn-update-banner"><?= __('cms_update_now_btn', 'Actualizar ahora') ?> →</a>
+      <button type="button" class="btn-dismiss-banner" onclick="dismissUpdateBanner('cms')" title="Descartar">✕</button>
+    </div>
+  </div>
+
 <script>
+function dismissUpdateBanner(app) {
+  var ver = document.getElementById(app + '-update-ver-label')?.innerText || '1';
+  sessionStorage.setItem('dismissed_update_' + app, ver);
+  var b = document.getElementById(app + '-update-banner');
+  if (b) b.style.display = 'none';
+}
+
 // Run immediately — body already exists at this point
 (function() {
   const COLLAPSED_KEY = 'kutblog_sidebar_collapsed';
@@ -605,6 +731,46 @@ body.scheme-light .floating-publish-btn {
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const mobileBtn     = document.getElementById('mobile-menu-btn');
     const overlay       = document.getElementById('sidebar-overlay');
+
+    // ── Update banner positioning & visibility ─────────────────────────────
+    const banner   = document.getElementById('cms-update-banner');
+    const badge    = document.getElementById('cms-update-badge');
+    const verLabel = document.getElementById('cms-update-ver-label');
+    const topbar   = document.querySelector('.topbar');
+
+    if (banner && topbar && topbar.parentNode) {
+      topbar.parentNode.insertBefore(banner, topbar.nextSibling);
+    }
+
+    const isAvailable = <?= $cms_update_available ? 'true' : 'false' ?>;
+    const dismissed   = sessionStorage.getItem('dismissed_update_cms');
+    const currentDismissed = verLabel ? verLabel.innerText : '';
+
+    if (isAvailable && '<?= $active ?>' !== 'update' && dismissed !== currentDismissed) {
+      if (banner) banner.style.display = 'flex';
+    }
+
+    <?php if (!empty($cms_check_stale)): ?>
+    fetch('<?= base_url() ?>/api/update.php?action=check', { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.available && data.new_version) {
+          const currentVer = '<?= CMS_VERSION ?>';
+          if (data.new_version !== currentVer) {
+            if (verLabel) verLabel.innerText = 'v' + data.new_version;
+            if (badge) {
+              badge.innerText = 'v' + data.new_version;
+              badge.style.display = 'inline-block';
+            }
+            const dismissedNow = sessionStorage.getItem('dismissed_update_cms');
+            if (banner && dismissedNow !== ('v' + data.new_version) && '<?= $active ?>' !== 'update') {
+              banner.style.display = 'flex';
+            }
+          }
+        }
+      })
+      .catch(function() {});
+    <?php endif; ?>
 
     // ── Desktop: collapse/expand ──────────────────────────────────────────
     if (sidebarToggle) {
