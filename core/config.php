@@ -554,7 +554,11 @@ function format_date(mixed $date, string $format = 'default', ?string $lang = nu
     }
 }
 
-function __( string $key, string $fallback = '' ): string {
+function __( string $key, $fallback = '', array $replace = [] ): string {
+    if (is_array($fallback)) {
+        $replace = $fallback;
+        $fallback = '';
+    }
     static $strings = null;
     if ($strings === null) {
         $lang    = detect_admin_lang();
@@ -567,11 +571,21 @@ function __( string $key, string $fallback = '' ): string {
             $strings = array_merge($en, $strings);
         }
     }
-    return htmlspecialchars($strings[$key] ?? $fallback ?: $key, ENT_QUOTES, 'UTF-8');
+    $text = $strings[$key] ?? ((string)$fallback !== '' ? (string)$fallback : $key);
+    if (!empty($replace)) {
+        foreach ($replace as $k => $v) {
+            $text = str_replace(':' . $k, (string)$v, $text);
+        }
+    }
+    return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 }
 
 // Raw (no htmlspecialchars) — for use in JS strings or known-safe values
-function __raw( string $key, string $fallback = '' ): string {
+function __raw( string $key, $fallback = '', array $replace = [] ): string {
+    if (is_array($fallback)) {
+        $replace = $fallback;
+        $fallback = '';
+    }
     static $strings_raw = null;
     if ($strings_raw === null) {
         $lang    = detect_admin_lang();
@@ -582,7 +596,13 @@ function __raw( string $key, string $fallback = '' ): string {
             $strings_raw = array_merge(file_exists($en) ? require $en : [], $strings_raw);
         }
     }
-    return $strings_raw[$key] ?? $fallback ?: $key;
+    $text = $strings_raw[$key] ?? ((string)$fallback !== '' ? (string)$fallback : $key);
+    if (!empty($replace)) {
+        foreach ($replace as $k => $v) {
+            $text = str_replace(':' . $k, (string)$v, $text);
+        }
+    }
+    return $text;
 }
 
 function cms_plugin_is_active(string $id): bool {

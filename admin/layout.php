@@ -697,7 +697,7 @@ body.scheme-light .floating-publish-btn {
     <div class="update-banner-body">
       <div class="update-banner-title"><?= __('cms_update_available_title', '¡Nueva versión disponible!') ?></div>
       <div class="update-banner-desc">
-        <?= __('cms_update_available_desc', [
+        <?= __raw('cms_update_available_desc', 'Hay una nueva versión de KutBlog (:version). Actualmente tienes instalada la v:current.', [
           'version' => '<strong id="cms-update-ver-label">v' . htmlspecialchars($cms_available_ver) . '</strong>',
           'current' => CMS_VERSION
         ]) ?>
