@@ -21,6 +21,14 @@ $history = cms_setting('update_history', []);
 // Reverse history to show newest first
 $history = array_reverse($history);
 
+$cms_update_cache = cms_update_cached();
+$hasAvailableUpdate = false;
+if ($cms_update_cache && !empty($cms_update_cache['available']) && !empty($cms_update_cache['new_version'])) {
+  if (version_compare($cms_update_cache['new_version'], CMS_VERSION, '>')) {
+    $hasAvailableUpdate = true;
+  }
+}
+
 admin_header(__('update_title', 'Actualizaciones'), 'update');
 ?>
     </div>
@@ -349,7 +357,38 @@ admin_header(__('update_title', 'Actualizaciones'), 'update');
 </div>
 
 <script>
-let _updateData = null;
+let _updateData = <?= $hasAvailableUpdate ? json_encode($cms_update_cache) : 'null' ?>;
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (_updateData && _updateData.available) {
+    const status = document.getElementById('update-status');
+    const available = document.getElementById('update-available');
+    const applyBtn = document.getElementById('btn-apply');
+    if (status) status.style.display = 'none';
+    if (available) available.style.display = 'block';
+    if (applyBtn) {
+      applyBtn.disabled = false;
+      applyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> <?= __('update_btn_apply', 'Actualizar ahora') ?>';
+    }
+    const verEl = document.getElementById('update-version-label');
+    if (verEl) verEl.textContent = _updateData.name || ('v' + _updateData.new_version);
+    const dateEl = document.getElementById('update-date-label');
+    if (dateEl) {
+      dateEl.textContent = _updateData.published_at
+        ? 'Publicado el ' + new Date(_updateData.published_at).toLocaleDateString('es', {year:'numeric', month:'long', day:'numeric'})
+        : '';
+    }
+    const chEl = document.getElementById('update-changelog-body');
+    if (chEl) chEl.textContent = _updateData.changelog || 'Sin notas de la versión.';
+    const ghLink = document.getElementById('update-gh-link');
+    if (ghLink) ghLink.href = _updateData.html_url || '#';
+  } else {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('check') === '1' || urlParams.get('auto') === '1') {
+      cmsUpdateCheck();
+    }
+  }
+});
 
 function cmsSaveToken(e) {
   e.preventDefault();
