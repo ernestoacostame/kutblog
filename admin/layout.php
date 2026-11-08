@@ -682,10 +682,10 @@ body.scheme-light .floating-publish-btn {
       <!-- Language switcher -->
       <?php $cur_lang = detect_admin_lang(); ?>
       <div style="display:flex;gap:3px;align-items:center;background:var(--surface2);padding:3px;border-radius:8px;border:1px solid var(--border);" title="Idioma del panel / Panel language">
-        <a href="?lang=es" style="font-size:0.8rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:6px;text-decoration:none;transition:all 0.15s;
+        <a href="?lang=es" onclick="document.cookie='kutblog_lang=es; path=/; max-age=31536000; SameSite=Lax'" style="font-size:0.8rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:6px;text-decoration:none;transition:all 0.15s;
           background:<?= $cur_lang==='es' ? 'var(--accent)' : 'transparent' ?>;
           color:<?= $cur_lang==='es' ? '#ffffff' : 'var(--muted)' ?>;">ES</a>
-        <a href="?lang=en" style="font-size:0.8rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:6px;text-decoration:none;transition:all 0.15s;
+        <a href="?lang=en" onclick="document.cookie='kutblog_lang=en; path=/; max-age=31536000; SameSite=Lax'" style="font-size:0.8rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:6px;text-decoration:none;transition:all 0.15s;
           background:<?= $cur_lang==='en' ? 'var(--accent)' : 'transparent' ?>;
           color:<?= $cur_lang==='en' ? '#ffffff' : 'var(--muted)' ?>;">EN</a>
       </div>

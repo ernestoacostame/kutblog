@@ -1,6 +1,6 @@
 <?php
 // KutBlog - Configuration
-define('CMS_VERSION', '2.3.43');
+define('CMS_VERSION', '2.3.44');
 define('CMS_NAME', 'KutBlog');
 define('ROOT_PATH', dirname(__DIR__));
 define('CONTENT_PATH', ROOT_PATH . '/content');
@@ -423,6 +423,9 @@ function site_lang(): string {
     if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         @session_start();
     }
+    if (!empty($_COOKIE['kutblog_lang']) && in_array($_COOKIE['kutblog_lang'], ['es', 'en'], true)) {
+        return $_COOKIE['kutblog_lang'];
+    }
     if (!empty($_SESSION['admin_lang']) && in_array($_SESSION['admin_lang'], ['es', 'en'], true)) {
         return $_SESSION['admin_lang'];
     }
@@ -435,23 +438,42 @@ function site_lang(): string {
 
 // ── i18n ──────────────────────────────────────────────────────────────────
 function detect_admin_lang(): string {
-    // 1. Explicit override via GET param (persisted in session)
+    // 1. Explicit override via GET param (persisted in session and cookie)
     if (isset($_GET['lang']) && in_array($_GET['lang'], ['es','en'], true)) {
+        $lang = $_GET['lang'];
         if (session_status() === PHP_SESSION_NONE && !headers_sent()) @session_start();
-        $_SESSION['admin_lang'] = $_GET['lang'];
-        return $_GET['lang'];
+        $_SESSION['admin_lang'] = $lang;
+        $_COOKIE['kutblog_lang'] = $lang;
+        if (!headers_sent()) {
+            $isHttps = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ||
+                       (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+                       (isset($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] === 'https') ||
+                       (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+            setcookie('kutblog_lang', $lang, [
+                'expires'  => time() + 31536000,
+                'path'     => '/',
+                'secure'   => $isHttps,
+                'httponly' => false,
+                'samesite' => 'Lax'
+            ]);
+        }
+        return $lang;
     }
-    // 2. Session preference
-    if (session_status() === PHP_SESSION_NONE && !headers_sent()) @session_start();
+    // 2. Cookie preference
+    if (!empty($_COOKIE['kutblog_lang']) && in_array($_COOKIE['kutblog_lang'], ['es', 'en'], true)) {
+        return $_COOKIE['kutblog_lang'];
+    }
+    // 3. Session preference
+    if (session_status() === PHP_SESSION_NONE && !headers_sent() && isset($_COOKIE[session_name()])) @session_start();
     if (!empty($_SESSION['admin_lang']) && in_array($_SESSION['admin_lang'], ['es', 'en'], true)) {
         return $_SESSION['admin_lang'];
     }
-    // 3. Configured language
+    // 4. Configured language
     $config = cms_config();
     if (!empty($config['language']) && in_array($config['language'], ['es', 'en'], true)) {
         return $config['language'];
     }
-    // 4. Browser Accept-Language header
+    // 5. Browser Accept-Language header
     $accept = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'en';
     return (stripos($accept, 'es') === 0 || strpos($accept, 'es-') !== false || strpos($accept, ',es') !== false) ? 'es' : 'en';
 }
