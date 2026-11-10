@@ -201,6 +201,8 @@ admin_header('Calendario de publicaciones', 'calendar');
   flex-direction: column;
   position: relative;
   transition: background 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .cal-day:hover {
   background: var(--surface2);
@@ -280,6 +282,8 @@ admin_header('Calendario de publicaciones', 'calendar');
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
 }
 .cal-pill:hover {
   transform: translateY(-1px);
@@ -293,6 +297,8 @@ admin_header('Calendario de publicaciones', 'calendar');
   flex-shrink: 0;
 }
 .cal-pill-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

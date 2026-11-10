@@ -851,7 +851,7 @@ body.scheme-light .editor-mode-switcher .mode-btn.active {
 
 /* ── Writing Desk: Floating Bubble Menu ──────────────────────── */
 .writing-bubble-menu {
-  position: absolute;
+  position: fixed;
   z-index: 1200;
   background: var(--surface);
   border: 1px solid var(--border2);
@@ -4890,11 +4890,27 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     }
   });
 
-  // 8. DESK SHEET CLICK-TO-FOCUS
+  // 8. DESK SHEET CLICK-TO-FOCUS (Only when clicking empty space below the article)
   const deskSheet = document.querySelector('.desk-sheet');
   if (deskSheet) {
     deskSheet.addEventListener('click', (e) => {
       if (e.target === deskSheet || e.target.classList.contains('desk-canvas-wrap')) {
+        // Never hijack or teleport cursor if user is selecting text
+        const winSel = window.getSelection();
+        if (winSel && winSel.toString().length > 0) return;
+        if (window.pmEditor && !window.pmEditor.state.selection.empty) return;
+
+        // Only focus at the end if the click happened strictly BELOW the editor's content bounding box
+        const mount = document.getElementById('prosemirror-mount');
+        const activeContainer = (mount && mount.style.display !== 'none') ? mount : fallbackEditor;
+        if (activeContainer) {
+          const rect = activeContainer.getBoundingClientRect();
+          if (e.clientY <= rect.bottom) {
+            // Clicked beside or above existing content, do not jump to end
+            return;
+          }
+        }
+
         if (window.pmEditor) {
           window.pmEditor.commands.focus('end');
         } else if (fallbackEditor) {
