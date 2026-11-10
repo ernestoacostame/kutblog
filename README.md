@@ -483,22 +483,26 @@ KutBlog incluye 8 temas optimizados para lectura y velocidad:
 
 ---
 
-## 💖 Donaciones / Donations
+## 💖 Support & Donations / Soporte y Donaciones
 
-Si los proyectos de **KutStudio** te son de utilidad, considera apoyar su desarrollo. ¡Cada aporte ayuda a mantener el proyecto vivo y en constante mejora!
+If you find this project useful and want to support its ongoing development, consider making a donation. Every contribution helps keep the project active, independent, and constantly improving!
 
-If **KutStudio** projects are helpful to you, consider supporting development with a donation. Every contribution helps keep the project alive and constantly improving!
+Si este proyecto te resulta útil y deseas apoyar su desarrollo continuo, considera hacer una donación. ¡Cada aporte ayuda a mantener el proyecto activo, independiente y en constante evolución!
+
+* ☕ **Buy Me a Coffee**: [buymeacoffee.com/ernestoacostame](https://www.buymeacoffee.com/ernestoacostame)
+* 💖 **Ko-fi**: [ko-fi.com/ernestoacostame](https://ko-fi.com/ernestoacostame)
+* 🅿️ **PayPal**: [paypal.com/paypalme/elav](https://www.paypal.com/paypalme/elav)
 
 <p align="center">
-  <a href="https://paypal.me/elav">
-    <img src="https://img.shields.io/badge/PayPal-Donar%20%2F%20Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://www.buymeacoffee.com/ernestoacostame">
+  <a href="https://www.buymeacoffee.com/ernestoacostame" target="_blank">
     <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Invítame%20un%20café-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
   </a>
   &nbsp;&nbsp;
-  <a href="https://ko-fi.com/ernestoacostame">
+  <a href="https://ko-fi.com/ernestoacostame" target="_blank">
     <img src="https://img.shields.io/badge/Ko--fi-Apóyame-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-fi">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://www.paypal.com/paypalme/elav" target="_blank">
+    <img src="https://img.shields.io/badge/PayPal-Donar%20%2F%20Donate-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal">
   </a>
 </p>
