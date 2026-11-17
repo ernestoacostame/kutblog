@@ -24,7 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
     // 1. Add subscriber manually
     if ($action === 'add_subscriber') {
         $email = trim($_POST['email'] ?? '');
-        $res = newsletter_add_subscriber($email);
+        $name = trim($_POST['name'] ?? '');
+        $res = newsletter_add_subscriber($email, $name);
         if (!empty($res['ok'])) {
             $msg = "Suscriptor añadido ({$email}). Correo de confirmación enviado.";
         } else {
@@ -103,6 +104,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
             }
         }
     }
+
+    // 6. Import subscribers from CSV
+    elseif ($action === 'import_csv') {
+        $csvContent = '';
+        if (!empty($_FILES['csv_file']['tmp_name']) && is_uploaded_file($_FILES['csv_file']['tmp_name'])) {
+            $csvContent = (string)file_get_contents($_FILES['csv_file']['tmp_name']);
+        } elseif (!empty($_POST['csv_text'])) {
+            $csvContent = (string)$_POST['csv_text'];
+        }
+
+        if (trim($csvContent) === '') {
+            $error = "Por favor selecciona un archivo .csv o pega el contenido CSV para importar.";
+        } else {
+            $autoConfirm = !empty($_POST['auto_confirm']);
+            $updateExisting = !empty($_POST['update_existing']);
+            $res = newsletter_import_subscribers_csv($csvContent, $autoConfirm, $updateExisting);
+            if (!empty($res['ok'])) {
+                $msg = "Importación completada con éxito: {$res['imported']} nuevos suscriptores importados, {$res['updated']} actualizados, {$res['skipped']} omitidos por ya existir.";
+                if (!empty($res['invalid'])) {
+                    $msg .= " ({$res['invalid']} filas omitidas por no tener un email válido).";
+                }
+            } else {
+                $error = $res['error'] ?? 'Error durante la importación CSV.';
+            }
+        }
+    }
 }
 
 // ── Export CSV action ────────────────────────────────────────────────────────
@@ -111,10 +138,11 @@ if (($_GET['action'] ?? '') === 'export_csv' && verify_csrf($_GET['csrf'] ?? '')
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="kutblog_suscriptores_' . date('Ymd_His') . '.csv"');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Email', 'Estado', 'Fecha Registro', 'Fecha Confirmado']);
+    fputcsv($out, ['Email', 'Nombre', 'Estado', 'Fecha Registro', 'Fecha Confirmado']);
     foreach ($subs as $s) {
         fputcsv($out, [
             $s['email'],
+            $s['name'] ?? '',
             $s['status'],
             $s['created_at'] ?? '',
             $s['confirmed_at'] ?? ''
@@ -141,6 +169,9 @@ admin_header('Newsletter', 'newsletter');
 ?>
       <div style="display:flex; align-items:center; gap:0.5rem;">
         <?php if ($tab === 'subscribers'): ?>
+          <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modal-import-csv').style.display='flex'">
+            ↑ Importar CSV
+          </button>
           <a href="?action=export_csv&csrf=<?= $csrf ?>" class="btn btn-secondary btn-sm" title="Descargar lista en formato CSV">
             ↓ Exportar CSV
           </a>
@@ -205,12 +236,14 @@ admin_header('Newsletter', 'newsletter');
       <!-- Add subscriber form -->
       <div class="card" style="margin-bottom:1.5rem; padding:1.25rem;">
         <h4 style="margin:0 0 0.75rem 0; font-size:0.95rem; font-weight:600; color:var(--text);">Añadir Suscriptor Manualmente</h4>
-        <form method="POST" style="display:flex; gap:0.5rem; max-width:540px;">
+        <form method="POST" style="display:flex; flex-wrap:wrap; gap:0.5rem; max-width:680px;">
           <input type="hidden" name="csrf" value="<?= $csrf ?>">
           <input type="hidden" name="action" value="add_subscriber">
+          <input type="text" name="name" placeholder="Nombre (opcional)"
+                 style="flex:1; min-width:180px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.75rem; color:var(--text); font-size:0.875rem;">
           <input type="email" name="email" placeholder="correo@ejemplo.com" required
-                 style="flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.75rem; color:var(--text); font-size:0.875rem;">
-          <button type="submit" class="btn btn-primary btn-sm">Añadir y Enviar Confirmación</button>
+                 style="flex:1; min-width:220px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.75rem; color:var(--text); font-size:0.875rem;">
+          <button type="submit" class="btn btn-primary btn-sm">Añadir Suscriptor</button>
         </form>
       </div>
 
@@ -224,13 +257,13 @@ admin_header('Newsletter', 'newsletter');
           <div style="padding:3.5rem 1rem; text-align:center; color:var(--muted);">
             <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.6;">✉️</div>
             <div style="font-weight:600; color:var(--text);">Aún no tienes suscriptores</div>
-            <p style="font-size:0.85rem; margin-top:0.25rem;">Cuando los lectores se suscriban a través del formulario o los añadas manualmente, aparecerán aquí.</p>
+            <p style="font-size:0.85rem; margin-top:0.25rem;">Cuando los lectores se suscriban a través del formulario o los importes desde un CSV, aparecerán aquí.</p>
           </div>
         <?php else: ?>
           <table class="table">
             <thead>
               <tr>
-                <th>Correo Electrónico</th>
+                <th>Suscriptor</th>
                 <th>Estado</th>
                 <th>Fecha de Registro</th>
                 <th style="text-align:right;">Acción</th>
@@ -240,7 +273,12 @@ admin_header('Newsletter', 'newsletter');
               <?php foreach ($subs as $item): ?>
               <tr>
                 <td>
-                  <span style="font-weight:600; color:var(--text);"><?= htmlspecialchars($item['email']) ?></span>
+                  <?php if (!empty($item['name'])): ?>
+                    <div style="font-weight:600; color:var(--text);"><?= htmlspecialchars($item['name']) ?></div>
+                    <div style="font-size:0.8rem; color:var(--muted);"><?= htmlspecialchars($item['email']) ?></div>
+                  <?php else: ?>
+                    <span style="font-weight:600; color:var(--text);"><?= htmlspecialchars($item['email']) ?></span>
+                  <?php endif; ?>
                 </td>
                 <td>
                   <?php if (($item['status'] ?? '') === 'confirmed'): ?>
@@ -441,6 +479,59 @@ admin_header('Newsletter', 'newsletter');
       </div>
     <?php endif; ?>
 
+  </div>
+</div>
+
+<!-- Modal Importar CSV -->
+<div id="modal-import-csv" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:999; backdrop-filter:blur(3px); align-items:center; justify-content:center; padding:1.5rem;" onclick="if(event.target===this)this.style.display='none';">
+  <div class="card" style="width:100%; max-width:560px; max-height:90vh; overflow-y:auto; padding:1.5rem; position:relative; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+      <div>
+        <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--text);">Importar Suscriptores desde CSV</h3>
+        <p style="margin:0.25rem 0 0 0; font-size:0.8rem; color:var(--muted);">
+          Compatible con exportaciones de <strong>Substack</strong>, Mailchimp, Ghost o archivos CSV personalizados.
+        </p>
+      </div>
+      <button type="button" onclick="document.getElementById('modal-import-csv').style.display='none'"
+              style="background:none; border:none; color:var(--muted); font-size:1.25rem; cursor:pointer; line-height:1; padding:0.25rem;">✕</button>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="<?= $csrf ?>">
+      <input type="hidden" name="action" value="import_csv">
+
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text); margin-bottom:0.4rem;">
+          Subir archivo .CSV
+        </label>
+        <input type="file" name="csv_file" accept=".csv,text/csv,text/plain"
+               style="width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:0.5rem; color:var(--text); font-size:0.85rem;">
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text); margin-bottom:0.4rem;">
+          O pegar contenido CSV directamente
+        </label>
+        <textarea name="csv_text" rows="5" placeholder="Email,Name,Start date...&#10;usuario@correo.com,Ernesto,2023-04-15..."
+                  style="width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:0.6rem; color:var(--text); font-size:0.8rem; font-family:var(--font-mono); resize:vertical;"></textarea>
+      </div>
+
+      <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:0.85rem; margin-bottom:1.25rem; display:flex; flex-direction:column; gap:0.5rem;">
+        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text); cursor:pointer;">
+          <input type="checkbox" name="auto_confirm" value="1" checked>
+          <span><strong>Marcar como confirmados</strong> (Recomendado para suscriptores ya existentes de Substack)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text); cursor:pointer;">
+          <input type="checkbox" name="update_existing" value="1" checked>
+          <span>Actualizar datos de suscriptores si ya existían previamente</span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-import-csv').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Comenzar Importación</button>
+      </div>
+    </form>
   </div>
 </div>
 </body>

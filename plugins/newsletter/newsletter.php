@@ -224,8 +224,9 @@ function newsletter_send_mail(string $to, string $subject, string $htmlBody, arr
 /**
  * Add subscriber with Double Opt-In
  */
-function newsletter_add_subscriber(string $email): array {
+function newsletter_add_subscriber(string $email, string $name = ''): array {
     $email = strtolower(trim($email));
+    $name = trim($name);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'Correo electrónico no válido'];
     }
@@ -242,6 +243,10 @@ function newsletter_add_subscriber(string $email): array {
     }
 
     if ($existingKey && $subs[$existingKey]['status'] === 'confirmed') {
+        if (!empty($name) && empty($subs[$existingKey]['name'])) {
+            $subs[$existingKey]['name'] = $name;
+            newsletter_save_subscribers($subs);
+        }
         return ['ok' => true, 'already_confirmed' => true, 'message' => '¡Ya estás suscrito a nuestro boletín!'];
     }
 
@@ -257,6 +262,7 @@ function newsletter_add_subscriber(string $email): array {
 
     $subs[$key] = [
         'email'           => $email,
+        'name'            => $name ?: ($existingKey ? ($subs[$existingKey]['name'] ?? '') : ''),
         'status'          => 'pending',
         'token'           => $token,
         'created_at'      => $existingKey ? $subs[$existingKey]['created_at'] : date('Y-m-d H:i:s'),
@@ -329,6 +335,223 @@ function newsletter_delete_subscriber(string $email): bool {
         }
     }
     return $changed ? newsletter_save_subscribers($subs) : false;
+}
+
+/**
+ * Import subscribers from CSV content (Substack, Mailchimp, Ghost, or generic CSV)
+ */
+function newsletter_import_subscribers_csv(string $csvContent, bool $autoConfirm = true, bool $updateExisting = true): array {
+    // Strip UTF-8 BOM if present
+    if (str_starts_with($csvContent, "\xEF\xBB\xBF")) {
+        $csvContent = substr($csvContent, 3);
+    }
+    $csvContent = trim($csvContent);
+    if ($csvContent === '') {
+        return ['ok' => false, 'error' => 'El archivo o contenido CSV está vacío.'];
+    }
+
+    // Detect delimiter using the first non-empty line
+    $firstLine = strtok($csvContent, "\r\n");
+    $delimiters = [',', ';', "\t"];
+    $counts = [];
+    foreach ($delimiters as $d) {
+        $counts[$d] = substr_count($firstLine, $d);
+    }
+    arsort($counts);
+    $delimiter = array_key_first($counts) ?: ',';
+    if (($counts[$delimiter] ?? 0) === 0) {
+        $delimiter = ',';
+    }
+
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, $csvContent);
+    rewind($stream);
+
+    // Read first row to detect headers
+    $firstRow = fgetcsv($stream, 0, $delimiter);
+    if ($firstRow === false || empty($firstRow)) {
+        fclose($stream);
+        return ['ok' => false, 'error' => 'No se pudieron leer filas del archivo CSV.'];
+    }
+
+    $emailCol = null;
+    $nameCol = null;
+    $dateCol = null;
+    $cancelDateCol = null;
+    $typeCol = null;
+
+    $hasHeader = false;
+    foreach ($firstRow as $idx => $val) {
+        $clean = strtolower(trim($val, "\"' \t\n\r\0\x0B"));
+        if ($emailCol === null && (
+            $clean === 'email' || $clean === 'e-mail' || $clean === 'correo' || $clean === 'mail' ||
+            str_contains($clean, 'email') || str_contains($clean, 'correo')
+        )) {
+            $emailCol = $idx;
+            $hasHeader = true;
+        } elseif ($nameCol === null && (
+            $clean === 'name' || $clean === 'nombre' || $clean === 'full name' ||
+            $clean === 'first name' || $clean === 'subscriber name'
+        )) {
+            $nameCol = $idx;
+            $hasHeader = true;
+        } elseif ($dateCol === null && (
+            $clean === 'start date' || $clean === 'date' || $clean === 'fecha' ||
+            $clean === 'created_at' || $clean === 'created at' || $clean === 'subscription date'
+        )) {
+            $dateCol = $idx;
+            $hasHeader = true;
+        } elseif ($cancelDateCol === null && (
+            $clean === 'cancel date' || $clean === 'canceled at' || $clean === 'cancelled at' ||
+            $clean === 'unsubscribe date' || $clean === 'fecha baja'
+        )) {
+            $cancelDateCol = $idx;
+            $hasHeader = true;
+        } elseif ($typeCol === null && (
+            $clean === 'type' || $clean === 'tipo' || $clean === 'status' || $clean === 'estado'
+        )) {
+            $typeCol = $idx;
+            $hasHeader = true;
+        }
+    }
+
+    // If first row didn't look like a header (e.g. contains an actual email), treat it as a data row
+    $rowsToProcess = [];
+    if (!$hasHeader || filter_var(trim($firstRow[$emailCol ?? 0] ?? ''), FILTER_VALIDATE_EMAIL)) {
+        // No header: assume col 0 is email, col 1 is name (if available)
+        $emailCol = 0;
+        $nameCol = (count($firstRow) > 1) ? 1 : null;
+        $rowsToProcess[] = $firstRow;
+    }
+
+    while (($r = fgetcsv($stream, 0, $delimiter)) !== false) {
+        if (!empty($r) && array_filter($r, fn($v) => trim($v) !== '')) {
+            $rowsToProcess[] = $r;
+        }
+    }
+    fclose($stream);
+
+    if (empty($rowsToProcess)) {
+        return ['ok' => false, 'error' => 'No se encontraron registros de suscriptores para importar.'];
+    }
+
+    $subs = newsletter_get_subscribers();
+    $imported = 0;
+    $updated = 0;
+    $skipped = 0;
+    $invalid = 0;
+
+    foreach ($rowsToProcess as $row) {
+        $email = '';
+        if ($emailCol !== null && isset($row[$emailCol])) {
+            $email = strtolower(trim($row[$emailCol]));
+        }
+
+        // Fallback: search row for an email address if emailCol failed
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $foundEmail = false;
+            foreach ($row as $cell) {
+                $cellTrim = strtolower(trim($cell));
+                if (filter_var($cellTrim, FILTER_VALIDATE_EMAIL)) {
+                    $email = $cellTrim;
+                    $foundEmail = true;
+                    break;
+                }
+            }
+            if (!$foundEmail) {
+                $invalid++;
+                continue;
+            }
+        }
+
+        $name = ($nameCol !== null && isset($row[$nameCol])) ? trim($row[$nameCol]) : '';
+        
+        // Parse date
+        $dateRaw = ($dateCol !== null && isset($row[$dateCol])) ? trim($row[$dateCol]) : '';
+        $createdAt = date('Y-m-d H:i:s');
+        if (!empty($dateRaw)) {
+            $ts = strtotime($dateRaw);
+            if ($ts !== false && $ts > 0) {
+                $createdAt = date('Y-m-d H:i:s', $ts);
+            }
+        }
+
+        // Check if canceled/unsubscribed
+        $isCancelled = false;
+        if ($cancelDateCol !== null && !empty(trim($row[$cancelDateCol] ?? ''))) {
+            $isCancelled = true;
+        }
+        if ($typeCol !== null && in_array(strtolower(trim($row[$typeCol] ?? '')), ['cancel', 'cancelled', 'canceled', 'unsubscribed', 'baja'], true)) {
+            $isCancelled = true;
+        }
+
+        $targetStatus = $isCancelled ? 'unsubscribed' : ($autoConfirm ? 'confirmed' : 'pending');
+
+        // Check if existing subscriber
+        $existingKey = null;
+        foreach ($subs as $k => $s) {
+            if (strtolower($s['email']) === $email) {
+                $existingKey = $k;
+                break;
+            }
+        }
+
+        if ($existingKey !== null) {
+            if ($updateExisting) {
+                $changed = false;
+                if (!empty($name) && (empty($subs[$existingKey]['name']) || $subs[$existingKey]['name'] !== $name)) {
+                    $subs[$existingKey]['name'] = $name;
+                    $changed = true;
+                }
+                if ($subs[$existingKey]['status'] === 'pending' && $autoConfirm && !$isCancelled) {
+                    $subs[$existingKey]['status'] = 'confirmed';
+                    $subs[$existingKey]['confirmed_at'] = $createdAt;
+                    $changed = true;
+                } elseif ($isCancelled && $subs[$existingKey]['status'] !== 'unsubscribed') {
+                    $subs[$existingKey]['status'] = 'unsubscribed';
+                    $subs[$existingKey]['unsubscribed_at'] = date('Y-m-d H:i:s');
+                    $changed = true;
+                }
+                if ($changed) {
+                    $updated++;
+                } else {
+                    $skipped++;
+                }
+            } else {
+                $skipped++;
+            }
+            continue;
+        }
+
+        // New subscriber
+        $token = bin2hex(random_bytes(16));
+        $key = 'sub_' . substr(md5($email), 0, 10);
+
+        $subs[$key] = [
+            'email'           => $email,
+            'name'            => $name,
+            'status'          => $targetStatus,
+            'token'           => $token,
+            'created_at'      => $createdAt,
+            'confirmed_at'    => ($targetStatus === 'confirmed') ? $createdAt : null,
+            'unsubscribed_at' => ($targetStatus === 'unsubscribed') ? date('Y-m-d H:i:s') : null,
+            'source'          => 'csv_import',
+        ];
+        $imported++;
+    }
+
+    if ($imported > 0 || $updated > 0) {
+        newsletter_save_subscribers($subs);
+    }
+
+    return [
+        'ok'       => true,
+        'imported' => $imported,
+        'updated'  => $updated,
+        'skipped'  => $skipped,
+        'invalid'  => $invalid,
+        'total'    => count($rowsToProcess)
+    ];
 }
 
 /**
