@@ -170,10 +170,10 @@ admin_header('Newsletter', 'newsletter');
       <div style="display:flex; align-items:center; gap:0.5rem;">
         <?php if ($tab === 'subscribers'): ?>
           <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modal-import-csv').style.display='flex'">
-            ↑ Importar CSV
+            ↓ Importar CSV
           </button>
           <a href="?action=export_csv&csrf=<?= $csrf ?>" class="btn btn-secondary btn-sm" title="Descargar lista en formato CSV">
-            ↓ Exportar CSV
+            ↑ Exportar CSV
           </a>
         <?php endif; ?>
       </div>
