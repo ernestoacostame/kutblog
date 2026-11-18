@@ -41,8 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'excerpt'        => trim($_POST['excerpt'] ?? ''),
             'slug'           => sanitize_filename(trim($_POST['custom_slug'] ?? '') ?: slug_from_title($_POST['title'] ?? '')),
             'status'         => $target_status,
-            'categories'     => array_filter(array_map('trim', explode(',', $_POST['categories'] ?? ''))),
-            'tags'           => array_filter(array_map('trim', explode(',', $_POST['tags'] ?? ''))),
+            'categories'     => array_values(array_filter(array_map(function($c) {
+                return ltrim(trim((string)$c), "+ \t\n\r\0\x0B");
+            }, explode(',', $_POST['categories'] ?? '')))),
+            'tags'           => array_values(array_filter(array_map(function($t) {
+                return ltrim(trim((string)$t), "+ \t\n\r\0\x0B");
+            }, explode(',', $_POST['tags'] ?? '')))),
             'featured_image' => trim($_POST['featured_image'] ?? ''),
             'mastodon_url'   => trim($_POST['mastodon_url'] ?? ''),
             'kutpod_url'     => trim($_POST['kutpod_url'] ?? ($post['kutpod_url'] ?? '')),
@@ -531,7 +535,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
             <?php if (!empty($all_cats)): ?>
             <div class="tag-suggestions" id="cat-suggestions">
               <?php foreach ($all_cats as $c): ?>
-              <span class="tag-sug" data-target="cat">+ <?= htmlspecialchars($c) ?></span>
+              <span class="tag-sug" data-target="cat" data-val="<?= htmlspecialchars($c) ?>">+ <?= htmlspecialchars($c) ?></span>
               <?php endforeach; ?>
             </div>
             <?php endif; ?>
@@ -558,7 +562,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
             <?php if (!empty($all_tags_list)): ?>
             <div class="tag-suggestions" id="tag-quick-suggestions">
               <?php foreach (array_slice($all_tags_list, 0, 8) as $t): ?>
-              <span class="tag-sug tag-quick-sug">+ <?= htmlspecialchars($t) ?></span>
+              <span class="tag-sug tag-quick-sug" data-val="<?= htmlspecialchars($t) ?>">+ <?= htmlspecialchars($t) ?></span>
               <?php endforeach; ?>
             </div>
             <?php endif; ?>
@@ -5784,7 +5788,7 @@ function initTagInput(inputId, chipsId, hiddenId, suggestionsId) {
   }
 
   function addChip(val) {
-    val = val.trim();
+    val = (val || '').replace(/^\+\s*/, '').trim();
     if (!val || values.includes(val)) return;
     values.push(val);
     updateHidden();
@@ -5798,7 +5802,8 @@ function initTagInput(inputId, chipsId, hiddenId, suggestionsId) {
       updateHidden();
       if (sugArea) {
         sugArea.querySelectorAll('.tag-sug').forEach(s => {
-          if (s.textContent.trim() === val) s.classList.remove('used');
+          const sVal = (s.dataset.val || s.textContent).replace(/^\+\s*/, '').trim();
+          if (sVal === val) s.classList.remove('used');
         });
       }
     });
@@ -5806,7 +5811,8 @@ function initTagInput(inputId, chipsId, hiddenId, suggestionsId) {
 
     if (sugArea) {
       sugArea.querySelectorAll('.tag-sug').forEach(s => {
-        if (s.textContent.trim() === val) s.classList.add('used');
+        const sVal = (s.dataset.val || s.textContent).replace(/^\+\s*/, '').trim();
+        if (sVal === val) s.classList.add('used');
       });
     }
   }
@@ -5827,7 +5833,8 @@ function initTagInput(inputId, chipsId, hiddenId, suggestionsId) {
         updateHidden();
         if (sugArea && removed) {
           sugArea.querySelectorAll('.tag-sug').forEach(s => {
-            if (s.textContent.trim() === removed) s.classList.remove('used');
+            const sVal = (s.dataset.val || s.textContent).replace(/^\+\s*/, '').trim();
+            if (sVal === removed) s.classList.remove('used');
           });
         }
       }
@@ -5843,9 +5850,10 @@ function initTagInput(inputId, chipsId, hiddenId, suggestionsId) {
 
   if (sugArea) {
     sugArea.querySelectorAll('.tag-sug').forEach(sug => {
-      if (values.includes(sug.textContent.trim())) sug.classList.add('used');
+      const sVal = (sug.dataset.val || sug.textContent).replace(/^\+\s*/, '').trim();
+      if (values.includes(sVal)) sug.classList.add('used');
       sug.addEventListener('click', () => {
-        addChip(sug.textContent.trim());
+        addChip(sVal);
         input.focus();
       });
     });

@@ -1,6 +1,7 @@
 <?php
 // KutBlog - Admin Layout
 function admin_header(string $page_title = '', string $active = ''): void {
+    $page_title_plain = html_entity_decode($page_title, ENT_QUOTES, 'UTF-8');
     $color = theme_color();
     $title = site_title();
     $user  = $_SESSION['username'] ?? 'Admin';
@@ -41,7 +42,7 @@ function admin_header(string $page_title = '', string $active = ''): void {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= $page_title ? htmlspecialchars($page_title) . ' — ' : '' ?>Admin · <?= htmlspecialchars($title) ?></title>
+<title><?= $page_title_plain ? htmlspecialchars($page_title_plain) . ' — ' : '' ?>Admin · <?= htmlspecialchars($title) ?></title>
 <?= cms_favicon_tags() ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -564,95 +565,95 @@ body.scheme-light .floating-publish-btn {
   </a>
 
   <nav class="sidebar-nav">
-    <div class="nav-section">Contenido</div>
-    <a href="<?= base_url() ?>/admin/" class="nav-item <?= $active === 'dashboard' ? 'active' : '' ?>" data-label="Panel">
+    <div class="nav-section"><?= __("nav_content", "Contenido") ?></div>
+    <a href="<?= base_url() ?>/admin/" class="nav-item <?= $active === 'dashboard' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_dashboard", "Panel")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       <span class="nav-label"><?= __("nav_dashboard") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/articles.php" class="nav-item <?= $active === 'articles' ? 'active' : '' ?>" data-label="Artículos">
+    <a href="<?= base_url() ?>/admin/articles.php" class="nav-item <?= $active === 'articles' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_articles", "Artículos")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span class="nav-label"><?= __("nav_articles") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/taxonomies.php" class="nav-item <?= $active === 'taxonomies' ? 'active' : '' ?>" data-label="<?= __("nav_taxonomies", "Categorías y Etiquetas") ?>">
+    <a href="<?= base_url() ?>/admin/taxonomies.php" class="nav-item <?= $active === 'taxonomies' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_taxonomies", "Categorías y Etiquetas")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span class="nav-label"><?= __("nav_taxonomies", "Categorías y Etiquetas") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/calendar.php" class="nav-item <?= $active === 'calendar' ? 'active' : '' ?>" data-label="Calendario">
+    <a href="<?= base_url() ?>/admin/calendar.php" class="nav-item <?= $active === 'calendar' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_calendar", "Calendario")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span class="nav-label">Calendario</span>
+      <span class="nav-label"><?= __("nav_calendar", "Calendario") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/pages.php" class="nav-item <?= $active === 'pages' ? 'active' : '' ?>" data-label="Páginas">
+    <a href="<?= base_url() ?>/admin/pages.php" class="nav-item <?= $active === 'pages' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_pages", "Páginas")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
       <span class="nav-label"><?= __("nav_pages") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/media.php" class="nav-item <?= $active === 'media' ? 'active' : '' ?>" data-label="Media">
+    <a href="<?= base_url() ?>/admin/media.php" class="nav-item <?= $active === 'media' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_media", "Media")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       <span class="nav-label"><?= __("nav_media") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/trash.php" class="nav-item <?= $active === 'trash' ? 'active' : '' ?>" data-label="Papelera">
+    <a href="<?= base_url() ?>/admin/trash.php" class="nav-item <?= $active === 'trash' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_trash", "Papelera")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-      <span class="nav-label">Papelera</span>
+      <span class="nav-label"><?= __("nav_trash", "Papelera") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/analytics.php" class="nav-item <?= $active === 'analytics' ? 'active' : '' ?>" data-label="Estadísticas">
+    <a href="<?= base_url() ?>/admin/analytics.php" class="nav-item <?= $active === 'analytics' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_analytics", "Estadísticas")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      <span class="nav-label">Estadísticas</span>
+      <span class="nav-label"><?= __("nav_analytics", "Estadísticas") ?></span>
     </a>
     <?php if (cms_plugin_is_active('newsletter')): ?>
-    <a href="<?= base_url() ?>/admin/newsletter.php" class="nav-item <?= $active === 'newsletter' ? 'active' : '' ?>" data-label="Newsletter">
+    <a href="<?= base_url() ?>/admin/newsletter.php" class="nav-item <?= $active === 'newsletter' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_newsletter", "Newsletter")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-      <span class="nav-label">Newsletter</span>
+      <span class="nav-label"><?= __("nav_newsletter", "Newsletter") ?></span>
     </a>
     <?php endif; ?>
     <?php if (cms_plugin_is_active('series')): ?>
-    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=series" class="nav-item <?= $active === 'series' ? 'active' : '' ?>" data-label="Series">
+    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=series" class="nav-item <?= $active === 'series' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_series", "Series")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
-      <span class="nav-label">Series</span>
+      <span class="nav-label"><?= __("nav_series", "Series") ?></span>
     </a>
     <?php endif; ?>
 
-    <div class="nav-section">Herramientas</div>
+    <div class="nav-section"><?= __("nav_tools", "Herramientas") ?></div>
     <?php if (cms_plugin_is_active('wp-import')): ?>
-    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=wp-import" class="nav-item <?= $active === 'import' ? 'active' : '' ?>" data-label="Importar WP">
+    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=wp-import" class="nav-item <?= $active === 'import' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_import_wp", "Importar WP")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span class="nav-label"><?= __("nav_import_wp") ?></span>
     </a>
     <?php endif; ?>
     <?php if (cms_plugin_is_active('search-replace')): ?>
-    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=search-replace" class="nav-item <?= $active === 'tools' ? 'active' : '' ?>" data-label="Buscar y reemplazar">
+    <a href="<?= base_url() ?>/admin/plugins.php?action=settings&plugin=search-replace" class="nav-item <?= $active === 'tools' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_search_replace", "Buscar y reemplazar")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span class="nav-label"><?= __("nav_search_replace") ?></span>
     </a>
     <?php endif; ?>
-    <a href="<?= base_url() ?>/admin/export.php" class="nav-item <?= $active === 'export' ? 'active' : '' ?>" data-label="Exportar">
+    <a href="<?= base_url() ?>/admin/export.php" class="nav-item <?= $active === 'export' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_export", "Exportar")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span class="nav-label"><?= __("nav_export") ?></span>
     </a>
 
-    <div class="nav-section">Configuración</div>
-    <a href="<?= base_url() ?>/admin/settings.php" class="nav-item <?= $active === 'settings' ? 'active' : '' ?>" data-label="Ajustes">
+    <div class="nav-section"><?= __("nav_config", "Configuración") ?></div>
+    <a href="<?= base_url() ?>/admin/settings.php" class="nav-item <?= $active === 'settings' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_settings", "Ajustes")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span class="nav-label"><?= __("nav_settings") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/users.php" class="nav-item <?= $active === 'users' ? 'active' : '' ?>" data-label="Usuarios">
+    <a href="<?= base_url() ?>/admin/users.php" class="nav-item <?= $active === 'users' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_users", "Usuarios")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span class="nav-label"><?= __("nav_users") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/plugins.php" class="nav-item <?= $active === 'plugins' ? 'active' : '' ?>" data-label="Plugins">
+    <a href="<?= base_url() ?>/admin/plugins.php" class="nav-item <?= $active === 'plugins' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_plugins", "Plugins")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      <span class="nav-label">Plugins</span>
+      <span class="nav-label"><?= __("nav_plugins", "Plugins") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/themes.php" class="nav-item <?= $active === 'themes' ? 'active' : '' ?>" data-label="Temas">
+    <a href="<?= base_url() ?>/admin/themes.php" class="nav-item <?= $active === 'themes' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_themes", "Temas")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
       <span class="nav-label"><?= __("nav_themes") ?></span>
     </a>
-    <a href="<?= base_url() ?>/admin/update.php" class="nav-item <?= $active === 'update' ? 'active' : '' ?>" data-label="Actualizaciones" style="display:flex;align-items:center;">
+    <a href="<?= base_url() ?>/admin/update.php" class="nav-item <?= $active === 'update' ? 'active' : '' ?>" data-label="<?= htmlspecialchars(__raw("nav_updates", "Actualizaciones")) ?>" style="display:flex;align-items:center;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
       <span class="nav-label"><?= __("nav_updates", "Actualizaciones") ?></span>
       <span class="sidebar-update-badge" id="cms-update-badge" style="margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;<?= $cms_update_available ? '' : 'display:none;' ?>">v<?= htmlspecialchars($cms_available_ver) ?></span>
     </a>
 
-    <div class="nav-section">Sitio</div>
-    <a href="<?= base_url() ?>/" target="_blank" class="nav-item" data-label="Ver sitio">
+    <div class="nav-section"><?= __("nav_site", "Sitio") ?></div>
+    <a href="<?= base_url() ?>/" target="_blank" class="nav-item" data-label="<?= htmlspecialchars(__raw("nav_view_site", "Ver sitio")) ?>">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       <span class="nav-label"><?= __("nav_view_site") ?></span>
     </a>
@@ -680,7 +681,7 @@ body.scheme-light .floating-publish-btn {
       <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menú">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div class="topbar-title"><?= htmlspecialchars($page_title) ?></div>
+      <div class="topbar-title"><?= htmlspecialchars($page_title_plain) ?></div>
     </div>
     <div class="topbar-actions">
       <!-- Language switcher -->

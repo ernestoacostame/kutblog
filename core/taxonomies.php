@@ -66,15 +66,55 @@ function cms_taxonomies_get(string $taxonomy = 'categories'): array {
 
     // Escanear artículos y páginas para contar usos y descubrir taxonomías no registradas
     $contentTypes = ['articles', 'pages'];
+    $fixedAnyFile = false;
     foreach ($contentTypes as $ctype) {
         $items = get_content_index($ctype);
         foreach ($items as $post) {
             $postTaxonomies = $post[$taxonomy] ?? [];
             if (!is_array($postTaxonomies)) continue;
 
-            foreach ($postTaxonomies as $taxName) {
-                $taxName = trim((string)$taxName);
-                if ($taxName === '') continue;
+            $cleanedTaxonomies = [];
+            $postNeedsFix = false;
+
+            foreach ($postTaxonomies as $rawTax) {
+                $rawTaxStr = trim((string)$rawTax);
+                if ($rawTaxStr === '') continue;
+
+                // Limpiar prefijo accidental '+ ' o comas pegadas
+                $clean = ltrim($rawTaxStr, "+ \t\n\r\0\x0B");
+                if (strpos($clean, ',') !== false) {
+                    $parts = explode(',', $clean);
+                    foreach ($parts as $p) {
+                        $pClean = ltrim(trim($p), "+ \t\n\r\0\x0B");
+                        if ($pClean !== '' && !in_array($pClean, $cleanedTaxonomies, true)) {
+                            $cleanedTaxonomies[] = $pClean;
+                        }
+                    }
+                    $postNeedsFix = true;
+                } else {
+                    if ($clean !== $rawTaxStr) $postNeedsFix = true;
+                    if ($clean !== '' && !in_array($clean, $cleanedTaxonomies, true)) {
+                        $cleanedTaxonomies[] = $clean;
+                    }
+                }
+            }
+
+            // Si el post tenía categorías mal formateadas con '+ ' o comas, reparar el JSON
+            if ($postNeedsFix && !empty($post['slug'])) {
+                $filePath = CONTENT_PATH . "/{$ctype}/" . sanitize_filename($post['slug']) . '.json';
+                if (file_exists($filePath)) {
+                    $fileContent = @file_get_contents($filePath);
+                    $fileData = json_decode($fileContent, true);
+                    if (is_array($fileData)) {
+                        $fileData[$taxonomy] = $cleanedTaxonomies;
+                        if (@file_put_contents($filePath, json_encode($fileData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+                            $fixedAnyFile = true;
+                        }
+                    }
+                }
+            }
+
+            foreach ($cleanedTaxonomies as $taxName) {
                 $key = mb_strtolower($taxName, 'UTF-8');
 
                 if (isset($mapped[$key])) {
@@ -90,6 +130,11 @@ function cms_taxonomies_get(string $taxonomy = 'categories'): array {
                 }
             }
         }
+    }
+
+    if ($fixedAnyFile) {
+        invalidate_content_index();
+        clear_cache();
     }
 
     // Ordenar alfabéticamente por nombre de manera insensible a mayúsculas
@@ -110,9 +155,13 @@ function cms_taxonomy_save(string $taxonomy, string $name, string $slug = '', st
         return ['error' => 'Tipo de taxonomía inválido.'];
     }
 
-    $name = trim($name);
+    $name = ltrim(trim($name), "+ \t\n\r\0\x0B");
     if ($name === '') {
         return ['error' => 'El nombre no puede estar vacío.'];
+    }
+
+    if ($original_name !== null) {
+        $original_name = ltrim(trim($original_name), "+ \t\n\r\0\x0B");
     }
 
     $slug = trim($slug);

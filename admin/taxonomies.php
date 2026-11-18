@@ -94,6 +94,12 @@ $singularName = $isCats ? 'categoría' : 'etiqueta';
 
 admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
 ?>
+      <button type="button" class="btn btn-primary" onclick="openNewModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <?= $newItemLabel ?>
+      </button>
+    </div>
+  </div>
 
 <div class="page-body">
   <?php if ($msg): ?>
@@ -113,11 +119,6 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
         🏷️ <?= __("tax_tab_tags", "Etiquetas") ?> (<?= count(cms_taxonomies_get('tags')) ?>)
       </a>
     </div>
-
-    <button type="button" class="btn btn-primary" onclick="openNewModal()">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <?= $newItemLabel ?>
-    </button>
   </div>
 
   <div class="card">
@@ -125,13 +126,13 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
       <div style="display:flex; align-items:center; gap:0.75rem;">
         <span class="card-title"><?= $totalItems ?> <?= $pageTitle ?></span>
         <span style="font-size:0.82rem; color:var(--muted)">
-          (<?= $inUseCount ?> en uso · <?= $unusedCount ?> futuras / sin asignar)
+          (<?= $inUseCount ?> <?= __("tax_in_use", "en uso") ?> · <?= $unusedCount ?> <?= __("tax_future_unassigned", "futuras / sin asignar") ?>)
         </span>
       </div>
 
       <!-- Buscador en tiempo real -->
       <div style="position:relative; min-width:240px;">
-        <input type="text" id="tax-search" class="form-control" placeholder="Buscar <?= strtolower($pageTitle) ?>..." oninput="filterTaxonomies(this.value)" style="padding-left:32px; font-size:0.88rem; height:36px;">
+        <input type="text" id="tax-search" class="form-control" placeholder="<?= __("tax_search_placeholder", "Buscar :type...", ['type' => mb_strtolower($pageTitle, 'UTF-8')]) ?>" oninput="filterTaxonomies(this.value)" style="padding-left:32px; font-size:0.88rem; height:36px;">
         <svg style="position:absolute; left:10px; top:10px; opacity:0.5;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </div>
     </div>
@@ -169,7 +170,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
                   <span style="font-size:1.1rem; opacity:0.7;"><?= $isCats ? '📁' : '🏷️' ?></span>
                   <strong><?= htmlspecialchars($termName) ?></strong>
                   <?php if ($termCount === 0): ?>
-                    <span class="badge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.72rem; padding:2px 6px;">Futura</span>
+                    <span class="badge" style="background:rgba(99,102,241,0.15); color:var(--primary); font-size:0.72rem; padding:2px 6px;"><?= __("tax_badge_future", "Futura") ?></span>
                   <?php endif; ?>
                 </div>
               </td>
@@ -183,23 +184,23 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
               </td>
               <td style="text-align:center;">
                 <?php if ($termCount > 0): ?>
-                  <a href="<?= $adminFilterUrl ?>" title="Ver artículos con este término" class="badge badge-green" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; padding:3px 8px;">
+                  <a href="<?= $adminFilterUrl ?>" title="<?= __("tax_posts_col", "Artículos") ?>" class="badge badge-green" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; padding:3px 8px; white-space:nowrap;">
                     <?= $termCount ?> post<?= $termCount > 1 ? 's' : '' ?> ↗
                   </a>
                 <?php else: ?>
-                  <span class="badge" style="background:var(--surface2); color:var(--muted); padding:3px 8px;">0 posts</span>
+                  <span class="badge" style="background:var(--surface2); color:var(--muted); padding:3px 8px; white-space:nowrap;">0 posts</span>
                 <?php endif; ?>
               </td>
               <td style="text-align:right;">
                 <div style="display:inline-flex; gap:0.35rem; align-items:center;">
-                  <a href="<?= $frontendUrl ?>" target="_blank" class="btn btn-secondary btn-sm" title="Ver en el blog">↗</a>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick='openEditModal(<?= json_encode($termName) ?>, <?= json_encode($termSlug) ?>, <?= json_encode($termDesc) ?>)' title="Editar nombre o descripción">
+                  <a href="<?= $frontendUrl ?>" target="_blank" class="btn btn-secondary btn-sm" title="<?= __("tax_view_on_blog", "Ver en el blog") ?>">↗</a>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick='openEditModal(<?= json_encode($termName) ?>, <?= json_encode($termSlug) ?>, <?= json_encode($termDesc) ?>)' title="<?= __("tax_edit_title", "Editar") ?>">
                     <?= __("edit", "Editar") ?>
                   </button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick='openMergeModal(<?= json_encode($termName) ?>)' title="Fusionar con otro término">
-                    Fusionar
+                  <button type="button" class="btn btn-secondary btn-sm" onclick='openMergeModal(<?= json_encode($termName) ?>)' title="<?= __("tax_merge_title", "Fusionar término") ?>">
+                    <?= __("tax_btn_merge", "Fusionar") ?>
                   </button>
-                  <button type="button" class="btn btn-danger btn-sm" onclick='openDeleteModal(<?= json_encode($termName) ?>, <?= $termCount ?>)' title="Eliminar término">
+                  <button type="button" class="btn btn-danger btn-sm" onclick='openDeleteModal(<?= json_encode($termName) ?>, <?= $termCount ?>)' title="<?= __("tax_delete_title", "Eliminar término") ?>">
                     ✕
                   </button>
                 </div>
@@ -211,6 +212,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
       </div>
     <?php endif; ?>
   </div>
+</div>
 </div>
 
 <!-- Modal: Crear / Editar Término -->
@@ -233,7 +235,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
           </label>
           <input type="text" name="name" id="form-name" class="form-control" required placeholder="Ej. Linux, Tutoriales, etc." style="width:100%;">
           <div style="font-size:0.78rem; color:var(--muted); margin-top:4px;" id="rename-warning" style="display:none;">
-            ⚠ Si cambias el nombre, se renombrará automáticamente en todos los artículos asociados.
+            ⚠ <?= __("tax_rename_warning", "Si cambias el nombre, se renombrará automáticamente en todos los artículos asociados.") ?>
           </div>
         </div>
 
@@ -241,9 +243,9 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
           <label style="display:block; font-size:0.88rem; font-weight:600; margin-bottom:0.4rem;">
             <?= __("tax_field_slug", "Slug / Ruta") ?>
           </label>
-          <input type="text" name="slug" id="form-slug" class="form-control" placeholder="dejar vacío para auto-generar" style="width:100%;">
+          <input type="text" name="slug" id="form-slug" class="form-control" placeholder="<?= __("tax_slug_placeholder", "dejar vacío para auto-generar") ?>" style="width:100%;">
           <div style="font-size:0.78rem; color:var(--muted); margin-top:4px;">
-            Identificador en la URL: <code>/<?= $isCats ? 'category' : 'tag' ?>/slug</code>
+            <?= __("tax_slug_hint", "Identificador en la URL:") ?> <code>/<?= $isCats ? 'category' : 'tag' ?>/slug</code>
           </div>
         </div>
 
@@ -251,7 +253,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
           <label style="display:block; font-size:0.88rem; font-weight:600; margin-bottom:0.4rem;">
             <?= __("tax_field_desc", "Descripción (opcional)") ?>
           </label>
-          <textarea name="description" id="form-description" class="form-control" rows="3" placeholder="Breve descripción o temática de este término" style="width:100%;"></textarea>
+          <textarea name="description" id="form-description" class="form-control" rows="3" placeholder="<?= __("tax_desc_placeholder", "Breve descripción...") ?>" style="width:100%;"></textarea>
         </div>
       </div>
 
@@ -278,7 +280,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
 
       <div class="card-body" style="display:flex; flex-direction:column; gap:1.1rem;">
         <p style="font-size:0.88rem; color:var(--text); line-height:1.5;">
-          Vas a fusionar <strong id="merge-source-display" style="color:var(--primary);"></strong> en otro término.
+          <?= __("tax_merge_intro", "Vas a fusionar el término:") ?> <strong id="merge-source-display" style="color:var(--primary);"></strong>
         </p>
         <div class="sheet-hint" style="font-size:0.82rem; color:var(--muted); background:var(--surface2); padding:8px 12px; border-radius:6px; border:1px solid var(--border);">
           <?= __("tax_merge_desc", "Todos los artículos que tengan este término pasarán a tener el término de destino seleccionado.") ?>
@@ -289,7 +291,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
             <?= __("tax_target_term", "Término de destino") ?> *
           </label>
           <select name="target_name" id="merge-target-select" class="form-control" required style="width:100%;">
-            <option value="">-- Selecciona un término existente --</option>
+            <option value=""><?= __("tax_select_target", "-- Selecciona un término existente --") ?></option>
             <?php foreach ($items as $it): ?>
               <option value="<?= htmlspecialchars($it['name']) ?>"><?= htmlspecialchars($it['name']) ?></option>
             <?php endforeach; ?>
@@ -299,7 +301,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
 
       <div class="card-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; padding:1rem 1.25rem; border-top:1px solid var(--border);">
         <button type="button" class="btn btn-secondary" onclick="closeModals()"><?= __("cancel", "Cancelar") ?></button>
-        <button type="submit" class="btn btn-primary">Confirmar fusión</button>
+        <button type="submit" class="btn btn-primary"><?= __("tax_btn_merge_confirm", "Confirmar fusión") ?></button>
       </div>
     </form>
   </div>
@@ -320,7 +322,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
 
       <div class="card-body" style="display:flex; flex-direction:column; gap:1.1rem;">
         <p style="font-size:0.92rem; color:var(--text); line-height:1.5;">
-          ¿Estás seguro de que deseas eliminar <strong id="delete-name-display" style="color:var(--danger);"></strong>?
+          <?= __("tax_delete_intro", "¿Estás seguro de que deseas eliminar permanentemente:") ?> <strong id="delete-name-display" style="color:var(--danger);"></strong>
         </p>
 
         <div id="delete-posts-warning" style="display:none; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:10px 14px; font-size:0.85rem; color:var(--text);">
@@ -333,7 +335,7 @@ admin_header(__("tax_title", "Categorías y Etiquetas"), 'taxonomies');
 
       <div class="card-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; padding:1rem 1.25rem; border-top:1px solid var(--border);">
         <button type="button" class="btn btn-secondary" onclick="closeModals()"><?= __("cancel", "Cancelar") ?></button>
-        <button type="submit" class="btn btn-danger">Eliminar</button>
+        <button type="submit" class="btn btn-danger"><?= __("tax_btn_delete_confirm", "Eliminar") ?></button>
       </div>
     </form>
   </div>
@@ -355,24 +357,28 @@ function filterTaxonomies(query) {
 }
 
 function openNewModal() {
-  document.getElementById('form-modal-title').innerText = '<?= $newItemLabel ?>';
+  document.getElementById('form-modal-title').innerText = <?= json_encode(__raw($isCats ? 'tax_new_category' : 'tax_new_tag', $newItemLabel)) ?>;
   document.getElementById('form-original-name').value = '';
   document.getElementById('form-name').value = '';
   document.getElementById('form-slug').value = '';
   document.getElementById('form-description').value = '';
-  document.getElementById('form-submit-btn').innerText = 'Crear <?= $singularName ?>';
+  document.getElementById('form-submit-btn').innerText = <?= json_encode(__raw('save', 'Guardar')) ?>;
   document.getElementById('rename-warning').style.display = 'none';
   showModal('modal-tax-form');
   setTimeout(() => document.getElementById('form-name').focus(), 50);
 }
 
 function openEditModal(name, slug, desc) {
-  document.getElementById('form-modal-title').innerText = 'Editar ' + name;
+  document.getElementById('form-modal-title').innerText = <?= json_encode(__raw('tax_edit_title', 'Editar')) ?> + ': ' + name;
   document.getElementById('form-original-name').value = name;
   document.getElementById('form-name').value = name;
   document.getElementById('form-slug').value = slug;
   document.getElementById('form-description').value = desc || '';
-  document.getElementById('form-submit-btn').innerText = 'Guardar cambios';
+  document.getElementById('form-submit-btn').innerText = <?= json_encode(__raw('tax_save_changes', 'Guardar cambios')) ?>;
+  document.getElementById('rename-warning').style.display = 'block';
+  showModal('modal-tax-form');
+  setTimeout(() => document.getElementById('form-name').focus(), 50);
+}
   document.getElementById('rename-warning').style.display = 'block';
   showModal('modal-tax-form');
   setTimeout(() => document.getElementById('form-name').focus(), 50);
@@ -417,4 +423,4 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-<?php admin_footer(); ?>
+</body></html>
