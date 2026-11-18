@@ -70,7 +70,29 @@ fi
 sed -i "s/define('CMS_VERSION', '$CURRENT')/define('CMS_VERSION', '$NEW')/" "$VERSION_FILE"
 echo "✅ core/config.php actualizado a $NEW"
 
-# --- 2. Crear el ZIP (solo ficheros de KutBlog, sin datos de usuario ni configs personales) ---
+# --- 2. Git: stage, commit + tag ---
+cd "$CMS_DIR"
+
+# Verificar si hay cambios staged/unstaged
+UNSTAGED=$(git status --porcelain | grep -v 'core/config.php' | wc -l || true)
+
+if [[ "$UNSTAGED" -gt 0 ]]; then
+  echo "📋 Hay $UNSTAGED archivo(s) modificados sin stage."
+  read -rp "¿Incluirlos en el release? (s/N) " inc
+  if [[ "$inc" == "s" || "$inc" == "S" ]]; then
+    git add -A
+  fi
+fi
+
+# Siempre incluir core/config.php
+git add core/config.php
+
+# Commit
+git commit -m "Release KutBlog v$NEW"
+git tag -a "v$NEW" -m "KutBlog v$NEW"
+echo "✅ Commit y tag v$NEW creados"
+
+# --- 3. Crear el ZIP (solo ficheros de KutBlog, sin datos de usuario ni configs personales) ---
 ZIP_NAME="kutblog-v${NEW}.zip"
 ZIP_PATH="/tmp/$ZIP_NAME"
 
@@ -101,28 +123,6 @@ rm -rf "$STAGE_DIR"
 
 ZIP_SIZE=$(du -h "$ZIP_PATH" | cut -f1)
 echo "✅ ZIP creado: $ZIP_NAME ($ZIP_SIZE)"
-
-# --- 3. Git: commit + tag ---
-cd "$CMS_DIR"
-
-# Verificar si hay cambios staged/unstaged
-UNSTAGED=$(git status --porcelain | grep -v 'core/config.php' | wc -l || true)
-
-if [[ "$UNSTAGED" -gt 0 ]]; then
-  echo "📋 Hay $UNSTAGED archivo(s) modificados sin stage."
-  read -rp "¿Incluirlos en el release? (s/N) " inc
-  if [[ "$inc" == "s" || "$inc" == "S" ]]; then
-    git add -A
-  fi
-fi
-
-# Siempre incluir core/config.php
-git add core/config.php
-
-# Commit
-git commit -m "Release KutBlog v$NEW"
-git tag -a "v$NEW" -m "KutBlog v$NEW"
-echo "✅ Commit y tag v$NEW creados"
 
 # --- 4. Push al repositorio de KutBlog ---
 BRANCH=$(git branch --show-current || git rev-parse --abbrev-ref HEAD || echo "main")
