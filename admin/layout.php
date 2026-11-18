@@ -127,8 +127,13 @@ body.sidebar-collapsed .logo-text { opacity: 0; width: 0; }
 .sidebar-new-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.45); }
 .sidebar-new-btn .icon { flex-shrink: 0; }
 .btn-new-label { overflow: hidden; transition: opacity 0.15s, width 0.22s; }
-body.sidebar-collapsed .btn-new-label { opacity: 0; width: 0; }
-body.sidebar-collapsed .sidebar-new-btn { padding: 0.75rem; justify-content: center; margin: 0.85rem 0.5rem; }
+body.sidebar-collapsed .btn-new-label { display: none; }
+body.sidebar-collapsed .sidebar-new-btn {
+  width: 44px; height: 44px; padding: 0;
+  margin: 0.85rem auto; justify-content: center; gap: 0;
+  border-radius: var(--radius);
+}
+body.sidebar-collapsed .sidebar-new-btn .icon { width: 20px; height: 20px; }
 
 /* Nav */
 .sidebar-nav { flex: 1; padding: 0.35rem 0.65rem; overflow-y: auto; overflow-x: hidden; }
@@ -152,7 +157,9 @@ body.sidebar-collapsed .nav-section { opacity: 0; height: 0; padding: 0; margin:
 }
 .nav-item .icon { width: 19px; height: 19px; opacity: 0.85; flex-shrink: 0; }
 .nav-label { overflow: hidden; transition: opacity 0.15s, width 0.22s; }
-body.sidebar-collapsed .nav-label { opacity: 0; width: 0; }
+body.sidebar-collapsed .nav-label { display: none; }
+body.sidebar-collapsed .nav-item { justify-content: center; padding: 0.65rem 0; gap: 0; }
+body.sidebar-collapsed .nav-item:hover { transform: none; }
 
 /* Tooltip on collapsed */
 body.sidebar-collapsed .nav-item:hover::after {
@@ -170,10 +177,12 @@ body.sidebar-collapsed .nav-item:hover::after {
   padding: 0.85rem 0.75rem; border-top: 1px solid var(--border); flex-shrink: 0;
   overflow: hidden;
 }
+body.sidebar-collapsed .sidebar-footer { padding: 0.85rem 0.5rem; }
 .user-row {
   display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.65rem;
   border-radius: var(--radius-sm); overflow: hidden;
 }
+body.sidebar-collapsed .user-row { justify-content: center; padding: 0.5rem 0; gap: 0; }
 .user-avatar {
   width: 34px; height: 34px; background: var(--accent); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -181,7 +190,7 @@ body.sidebar-collapsed .nav-item:hover::after {
   box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.35);
 }
 .user-name { font-size: 0.92rem; font-weight: 600; color: var(--text); overflow: hidden; transition: opacity 0.15s, width 0.22s; white-space: nowrap; }
-body.sidebar-collapsed .user-name { opacity: 0; width: 0; }
+body.sidebar-collapsed .user-name { display: none; }
 .logout-btn {
   display: flex; align-items: center; gap: 0.6rem;
   padding: 0.55rem 0.85rem; border-radius: var(--radius-sm); background: rgba(244,63,94,0.1);
@@ -190,7 +199,12 @@ body.sidebar-collapsed .user-name { opacity: 0; width: 0; }
 }
 .logout-btn:hover { background: rgba(244,63,94,0.18); }
 .logout-label { overflow: hidden; transition: opacity 0.15s, width 0.22s; }
-body.sidebar-collapsed .logout-label { opacity: 0; width: 0; }
+body.sidebar-collapsed .logout-label { display: none; }
+body.sidebar-collapsed .logout-btn {
+  width: 44px; height: 44px; padding: 0;
+  margin: 0.35rem auto 0; justify-content: center; gap: 0;
+}
+body.sidebar-collapsed .logout-btn svg { width: 18px; height: 18px; }
 
 /* ── TOPBAR ── */
 .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.22s; }
@@ -559,7 +573,7 @@ body.scheme-light .floating-publish-btn {
   </div>
 
   <!-- New article quick button -->
-  <a href="<?= base_url() ?>/admin/editor.php?type=articles" class="sidebar-new-btn" data-label="Nuevo artículo">
+  <a href="<?= base_url() ?>/admin/editor.php?type=articles" class="sidebar-new-btn" title="<?= htmlspecialchars(__raw("nav_new_article", "Nuevo artículo")) ?>" data-label="<?= htmlspecialchars(__raw("nav_new_article", "Nuevo artículo")) ?>">
     <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <span class="btn-new-label"><?= __("nav_new_article") ?></span>
   </a>
@@ -668,7 +682,7 @@ body.scheme-light .floating-publish-btn {
       <?php endif; ?>
       <span class="user-name" title="<?= htmlspecialchars($displayName) ?>"><?= htmlspecialchars($displayName) ?></span>
     </div>
-    <a href="<?= base_url() ?>/admin/logout.php" class="logout-btn">
+    <a href="<?= base_url() ?>/admin/logout.php" class="logout-btn" title="<?= htmlspecialchars(__raw("nav_sign_out", "Cerrar sesión")) ?>" data-label="<?= htmlspecialchars(__raw("nav_sign_out", "Cerrar sesión")) ?>">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       <span class="logout-label"><?= __("nav_sign_out") ?></span>
     </a>
