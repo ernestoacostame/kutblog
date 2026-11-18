@@ -255,7 +255,12 @@ function get_content_index(string $type, bool $force = false): array {
     usort($items, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
 
     // Atomic cache write
-    @file_put_contents($cache_file, json_encode($items, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    $tmp = $cache_file . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
+    if (@file_put_contents($tmp, json_encode($items, JSON_UNESCAPED_UNICODE), LOCK_EX) !== false) {
+        if (!@rename($tmp, $cache_file)) @unlink($tmp);
+    } else {
+        @unlink($tmp);
+    }
     $GLOBALS['__content_index_cache'][$type] = $items;
     return $items;
 }

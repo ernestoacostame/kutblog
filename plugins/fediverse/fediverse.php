@@ -9,5 +9,4 @@ if (!in_array('sqlite', PDO::getAvailableDrivers())) {
 
 require_once __DIR__ . '/activitypub.php';
 
-// Initialize schema on load
-ap_ensure_schema();
+// DB is opened lazily by ap_db(); schema DDL is gated by PRAGMA user_version.

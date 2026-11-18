@@ -36,7 +36,9 @@ function newsletter_config(): array {
 function newsletter_save_config(array $smtp): bool {
     $cfg = cms_config();
     $cfg['smtp'] = array_merge($cfg['smtp'] ?? [], $smtp);
-    return file_put_contents(CONFIG_FILE, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+    $ok = file_put_contents(CONFIG_FILE, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+    cms_config(true); // refresh in-request cache
+    return $ok;
 }
 
 function newsletter_get_subscribers(): array {

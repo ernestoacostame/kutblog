@@ -1,6 +1,6 @@
 <?php
 // KutBlog - Configuration
-define('CMS_VERSION', '2.3.52');
+define('CMS_VERSION', '2.3.53');
 define('CMS_NAME', 'KutBlog');
 define('ROOT_PATH', dirname(__DIR__));
 define('CONTENT_PATH', ROOT_PATH . '/content');
@@ -18,13 +18,21 @@ if (file_exists(__DIR__ . '/taxonomies.php')) {
     require_once __DIR__ . '/taxonomies.php';
 }
 
-function cms_config(): array {
-    if (!file_exists(CONFIG_FILE)) return [];
-    return json_decode(file_get_contents(CONFIG_FILE), true) ?? [];
+function cms_config(bool $fresh = false): array {
+    static $c = null;
+    if ($fresh || $c === null) {
+        if (!file_exists(CONFIG_FILE)) {
+            $c = [];
+        } else {
+            $c = json_decode((string)file_get_contents(CONFIG_FILE), true) ?? [];
+        }
+    }
+    return $c;
 }
 
 function cms_save_config(array $data): void {
     file_put_contents(CONFIG_FILE, json_encode($data, JSON_PRETTY_PRINT));
+    cms_config(true); // refresh in-request cache
 }
 
 function is_installed(): bool {
@@ -426,7 +434,8 @@ function cms_init_timezone(): void {
 cms_init_timezone();
 
 function site_lang(): string {
-    if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+    // Only resume an existing session; never create one for anonymous visitors.
+    if (session_status() === PHP_SESSION_NONE && !headers_sent() && isset($_COOKIE[session_name()])) {
         @session_start();
     }
     if (!empty($_COOKIE['kutblog_lang']) && in_array($_COOKIE['kutblog_lang'], ['es', 'en'], true)) {

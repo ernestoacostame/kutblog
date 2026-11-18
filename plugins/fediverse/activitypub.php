@@ -8,6 +8,7 @@ if (!defined('ROOT_PATH')) {
 // ---------------------------------------------------------------------------
 // DB Setup
 // ---------------------------------------------------------------------------
+define('AP_SCHEMA_VERSION', 2);
 function ap_db(): PDO {
     static $pdo = null;
     if ($pdo) return $pdo;
@@ -19,12 +20,19 @@ function ap_db(): PDO {
         PDO::ATTR_TIMEOUT => 5,
     ]);
     $pdo->exec('PRAGMA foreign_keys = ON');
-    $pdo->exec('PRAGMA journal_mode = WAL');
     $pdo->exec('PRAGMA synchronous = NORMAL');
     $pdo->exec('PRAGMA cache_size = -32000');
     $pdo->exec('PRAGMA temp_store = MEMORY');
     $pdo->exec('PRAGMA mmap_size = 67108864');
     $pdo->exec('PRAGMA busy_timeout = 5000');
+
+    // DDL (and WAL) only when the schema version is outdated
+    $ver = (int) $pdo->query('PRAGMA user_version')->fetchColumn();
+    if ($ver < AP_SCHEMA_VERSION) {
+        $pdo->exec('PRAGMA journal_mode = WAL');
+        ap_ensure_schema($pdo);
+        $pdo->exec('PRAGMA user_version = ' . (int) AP_SCHEMA_VERSION);
+    }
     return $pdo;
 }
 
@@ -47,8 +55,8 @@ function ap_exec(string $sql, array $params = []): int {
     return (int) ap_db()->lastInsertId();
 }
 
-function ap_ensure_schema(): void {
-    $pdo = ap_db();
+function ap_ensure_schema(?PDO $pdo = null): void {
+    if ($pdo === null) { ap_db(); return; } // ap_db() runs the DDL when needed
     $pdo->exec("CREATE TABLE IF NOT EXISTS ap_keys (
         id          INTEGER PRIMARY KEY DEFAULT 1,
         public_key  TEXT NOT NULL,
@@ -114,6 +122,7 @@ function ap_ensure_schema(): void {
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ap_interactions_note ON ap_interactions(note_id, type)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ap_followers_inbox ON ap_followers(inbox)");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ap_outbox_published ON ap_outbox(published)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_ap_delivery_outbox ON ap_delivery(outbox_id)");
 }
 
 // ---------------------------------------------------------------------------
@@ -808,7 +817,8 @@ function ap_fetch_actor(string $url): ?array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => ['Accept: application/activity+json'],
         CURLOPT_USERAGENT => 'KutBlog/1.0 (+' . ap_base_url() . ')',
-        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 5,
     ]);
     $r = curl_exec($ch);
     curl_close($ch);
