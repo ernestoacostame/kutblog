@@ -251,6 +251,7 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                 </button>
                 <div class="bubble-sep"></div>
                 <button type="button" class="bubble-btn" data-cmd="link" title="Enlace">🔗</button>
+                <button type="button" class="bubble-btn" data-cmd="gallery" title="Galería de imágenes">⊞</button>
               </div>
 
               <!-- Writing Desk: Floating Image Alignment & Size Menu -->
@@ -389,6 +390,13 @@ admin_header(($is_new ? __raw('editor_new_article') : __raw('editor_edit_article
                     <div class="slash-text">
                       <span class="slash-title">Imagen</span>
                       <span class="slash-desc">Insertar imagen o foto</span>
+                    </div>
+                  </div>
+                  <div class="slash-item" data-cmd="gallery" role="menuitem">
+                    <span class="slash-icon">⊞</span>
+                    <div class="slash-text">
+                      <span class="slash-title">Galería de imágenes</span>
+                      <span class="slash-desc">Múltiples fotos en cuadrícula o carrusel</span>
                     </div>
                   </div>
                   <div class="slash-item" data-cmd="audio" role="menuitem">
@@ -3512,7 +3520,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
 
   // 3. MOUNT PROSEMIRROR (TIPTAP ENGINE)
   if (window.KutProseMirror && pmMount) {
-    const { Editor, Extension, StarterKit, Underline, Highlight, Link, Image, Placeholder } = window.KutProseMirror;
+    const { Editor, Extension, Node, StarterKit, Underline, Highlight, Link, Image, Placeholder } = window.KutProseMirror;
 
     const TextAlign = Extension ? Extension.create({
       name: 'textAlign',
@@ -3684,6 +3692,252 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       }
     }) : Image;
 
+    const GalleryNode = (Node || (Image ? Image.extend : null)) ? (Node || Image).create({
+      name: 'gallery',
+      group: 'block',
+      atom: true,
+      draggable: true,
+      selectable: true,
+      addAttributes() {
+        return {
+          layout: {
+            default: 'grid',
+            parseHTML: element => element.getAttribute('data-layout') || 'grid'
+          },
+          columns: {
+            default: 3,
+            parseHTML: element => parseInt(element.getAttribute('data-columns')) || 3
+          },
+          images: {
+            default: [],
+            parseHTML: element => {
+              const raw = element.getAttribute('data-images');
+              if (raw) {
+                try { return JSON.parse(raw); } catch (e) {}
+              }
+              const list = [];
+              element.querySelectorAll('figure.kutblog-gallery-item, figure, img').forEach(el => {
+                const img = el.tagName === 'IMG' ? el : el.querySelector('img');
+                const cap = el.querySelector('figcaption');
+                if (img && img.src) {
+                  list.push({
+                    url: img.src,
+                    alt: img.alt || '',
+                    caption: cap ? cap.textContent.trim() : ''
+                  });
+                }
+              });
+              return list;
+            }
+          }
+        };
+      },
+      parseHTML() {
+        return [
+          {
+            tag: 'div.kutblog-gallery'
+          }
+        ];
+      },
+      renderHTML({ node }) {
+        const layout = node.attrs.layout || 'grid';
+        const columns = node.attrs.columns || 3;
+        const images = Array.isArray(node.attrs.images) ? node.attrs.images : [];
+
+        const isCarousel = layout === 'carousel';
+        const innerContent = isCarousel
+          ? [
+              'div',
+              { class: 'kutblog-gallery-carousel' },
+              [
+                'div',
+                { class: 'kutblog-carousel-track' },
+                ...images.map(img => [
+                  'figure',
+                  { class: 'kutblog-gallery-item' },
+                  ['img', { src: img.url, alt: img.alt || '', loading: 'lazy' }],
+                  ...(img.caption ? [['figcaption', {}, img.caption]] : [])
+                ])
+              ],
+              ['button', { type: 'button', class: 'kutblog-carousel-btn prev', 'aria-label': 'Anterior' }, '‹'],
+              ['button', { type: 'button', class: 'kutblog-carousel-btn next', 'aria-label': 'Siguiente' }, '›'],
+              [
+                'div',
+                { class: 'kutblog-carousel-dots' },
+                ...images.map((_, i) => [
+                  'button',
+                  { type: 'button', class: 'kutblog-carousel-dot' + (i === 0 ? ' active' : ''), 'data-slide': String(i), 'aria-label': `Slide ${i + 1}` }
+                ])
+              ]
+            ]
+          : [
+              'div',
+              { class: `kutblog-gallery-grid cols-${columns}`, style: `--gallery-cols: ${columns};` },
+              ...images.map(img => [
+                'figure',
+                { class: 'kutblog-gallery-item' },
+                ['img', { src: img.url, alt: img.alt || '', loading: 'lazy' }],
+                ...(img.caption ? [['figcaption', {}, img.caption]] : [])
+              ])
+            ];
+
+        return [
+          'div',
+          {
+            class: `kutblog-gallery layout-${layout}`,
+            'data-layout': layout,
+            'data-columns': columns,
+            'data-images': JSON.stringify(images)
+          },
+          innerContent
+        ];
+      },
+      addNodeView() {
+        return ({ node, getPos, editor }) => {
+          const dom = document.createElement('div');
+          dom.className = 'kutblog-gallery-editor-block';
+          dom.style.position = 'relative';
+          dom.style.margin = '2rem 0';
+          dom.style.border = '1px dashed var(--border, rgba(255,255,255,0.18))';
+          dom.style.borderRadius = '12px';
+          dom.style.padding = '12px';
+          dom.style.background = 'var(--surface, rgba(0,0,0,0.03))';
+
+          function renderView(attrs) {
+            const layout = attrs.layout || 'grid';
+            const cols = attrs.columns || 3;
+            const imgs = Array.isArray(attrs.images) ? attrs.images : [];
+
+            dom.innerHTML = '';
+
+            const bar = document.createElement('div');
+            bar.style.display = 'flex';
+            bar.style.alignItems = 'center';
+            bar.style.justifyContent = 'space-between';
+            bar.style.marginBottom = '12px';
+            bar.style.flexWrap = 'wrap';
+            bar.style.gap = '8px';
+
+            const label = document.createElement('span');
+            label.style.fontSize = '0.82rem';
+            label.style.fontWeight = '600';
+            label.style.color = 'var(--text-muted, #71717a)';
+            label.style.display = 'inline-flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '6px';
+            const icon = layout === 'carousel' ? '↔' : '⊞';
+            const layoutName = layout === 'carousel' ? 'Carrusel' : `Cuadrícula (${cols} cols)`;
+            label.innerHTML = `<strong>${icon} Galería:</strong> ${layoutName} · ${imgs.length} fotos`;
+            bar.appendChild(label);
+
+            const actions = document.createElement('div');
+            actions.style.display = 'inline-flex';
+            actions.style.gap = '6px';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn btn-secondary btn-sm';
+            editBtn.style.padding = '3px 10px';
+            editBtn.style.fontSize = '0.78rem';
+            editBtn.innerHTML = '✏️ Editar galería';
+            editBtn.onclick = (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              openGalleryBuilderModal({
+                layout: attrs.layout || 'grid',
+                columns: attrs.columns || 3,
+                images: imgs
+              }, (newAttrs) => {
+                if (typeof getPos === 'function') {
+                  editor.chain().setNodeSelection(getPos()).updateAttributes('gallery', newAttrs).focus().run();
+                }
+              });
+            };
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn btn-secondary btn-sm';
+            delBtn.style.padding = '3px 8px';
+            delBtn.style.fontSize = '0.78rem';
+            delBtn.style.color = '#ef4444';
+            delBtn.title = 'Eliminar galería';
+            delBtn.innerHTML = '🗑';
+            delBtn.onclick = (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (confirm('¿Eliminar esta galería de fotos?')) {
+                if (typeof getPos === 'function') {
+                  editor.chain().deleteRange({ from: getPos(), to: getPos() + 1 }).focus().run();
+                }
+              }
+            };
+            actions.appendChild(delBtn);
+
+            bar.appendChild(actions);
+            dom.appendChild(bar);
+
+            const preview = document.createElement('div');
+            if (imgs.length === 0) {
+              preview.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.85rem;">Galería vacía. Pulsa en "Editar galería" para añadir fotos.</div>';
+            } else if (layout === 'carousel') {
+              preview.style.display = 'flex';
+              preview.style.gap = '10px';
+              preview.style.overflowX = 'auto';
+              preview.style.padding = '6px 0';
+              imgs.forEach((im, i) => {
+                const card = document.createElement('div');
+                card.style.flex = '0 0 150px';
+                card.style.position = 'relative';
+                card.style.borderRadius = '8px';
+                card.style.overflow = 'hidden';
+                card.style.border = '1px solid var(--border, rgba(255,255,255,0.1))';
+                card.style.background = '#000';
+                card.innerHTML = `<img src="${im.url}" style="width:100%; height:105px; object-fit:cover; display:block;"><div style="font-size:0.75rem; color:#fff; background:rgba(0,0,0,0.7); padding:4px 6px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">#${i+1} ${im.caption || ''}</div>`;
+                preview.appendChild(card);
+              });
+            } else {
+              preview.style.display = 'grid';
+              preview.style.gap = '8px';
+              preview.style.gridTemplateColumns = `repeat(${Math.min(cols, 4)}, 1fr)`;
+              imgs.forEach((im) => {
+                const card = document.createElement('div');
+                card.style.position = 'relative';
+                card.style.borderRadius = '8px';
+                card.style.overflow = 'hidden';
+                card.style.border = '1px solid var(--border, rgba(255,255,255,0.1))';
+                card.style.background = 'rgba(0,0,0,0.05)';
+                card.innerHTML = `<img src="${im.url}" style="width:100%; height:95px; object-fit:cover; display:block;">${im.caption ? `<div style="font-size:0.75rem; padding:3px 6px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${im.caption}</div>` : ''}`;
+                preview.appendChild(card);
+              });
+            }
+            dom.appendChild(preview);
+          }
+
+          renderView(node.attrs);
+
+          return {
+            dom,
+            update: (updatedNode) => {
+              if (updatedNode.type !== node.type) return false;
+              renderView(updatedNode.attrs);
+              return true;
+            }
+          };
+        };
+      },
+      addCommands() {
+        return {
+          setGallery: attrs => ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs: attrs
+            });
+          }
+        };
+      }
+    }) : null;
+
     const extensions = [
       StarterKit.configure({
         heading: { levels: [2, 3, 4] },
@@ -3704,6 +3958,7 @@ const htmlToolbar  = document.getElementById('html-toolbar');
       })
     ];
     if (TextAlign) extensions.push(TextAlign);
+    if (GalleryNode) extensions.push(GalleryNode);
 
     window.pmEditor = new Editor({
       element: pmMount,
@@ -4102,6 +4357,8 @@ const htmlToolbar  = document.getElementById('html-toolbar');
           if (url === null) return;
           if (url === '') window.pmEditor.chain().focus().unsetLink().run();
           else window.pmEditor.chain().focus().setLink({ href: url }).run();
+        } else if (cmd === 'gallery') {
+          openGalleryBuilderModal();
         }
         updateBubblePosition(window.pmEditor);
       } else {
@@ -4290,6 +4547,9 @@ const htmlToolbar  = document.getElementById('html-toolbar');
         break;
       case 'image':
         insertImage();
+        break;
+      case 'gallery':
+        openGalleryBuilderModal();
         break;
       case 'audio':
         const audioUrl = prompt('Introduce la URL del audio (MP3, OGG, WAV o podcast):');
@@ -6678,6 +6938,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (modal && modal.style.display !== 'none') {
         closeImageInsertModal();
       }
+      const gModal = document.getElementById('gallery-builder-modal');
+      if (gModal && gModal.style.display !== 'none') {
+        closeGalleryBuilderModal();
+      }
     }
   });
 });
@@ -6807,6 +7071,395 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+
+<!-- Modal: Constructor de Galería de Imágenes (Cuadrícula o Carrusel) -->
+<div id="gallery-builder-modal" class="image-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeGalleryBuilderModal()">
+  <div class="image-modal-card" style="width: 860px; max-height: 90vh;" role="dialog" aria-modal="true" aria-labelledby="gallery-modal-heading">
+    <div class="image-modal-header">
+      <div class="image-modal-title-wrap">
+        <span style="font-size: 1.3rem;">⊞</span>
+        <h3 id="gallery-modal-heading">Galería de imágenes</h3>
+      </div>
+      <button type="button" class="image-modal-close" onclick="closeGalleryBuilderModal()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div style="padding: 1.2rem 1.4rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1.2rem;">
+      <!-- Opciones de formato / disposición -->
+      <div style="background: var(--surface2); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-weight: 600; font-size: 0.9rem;">Disposición:</span>
+          <div class="pill-toggle-group" style="display: inline-flex; background: rgba(0,0,0,0.1); border-radius: 8px; padding: 3px; border: 1px solid var(--border);">
+            <button type="button" id="gallery-layout-grid-btn" class="btn btn-sm active" onclick="setGalleryLayout('grid')" style="border-radius: 6px; padding: 4px 12px; font-size: 0.82rem; background: var(--accent, #6366f1); color: #fff;">⊞ Cuadrícula</button>
+            <button type="button" id="gallery-layout-carousel-btn" class="btn btn-sm" onclick="setGalleryLayout('carousel')" style="border-radius: 6px; padding: 4px 12px; font-size: 0.82rem; background: transparent; border: none; color: var(--text);">↔ Carrusel</button>
+          </div>
+        </div>
+
+        <div id="gallery-columns-wrap" style="display: flex; align-items: center; gap: 10px;">
+          <label for="gallery-columns-select" style="font-size: 0.85rem; font-weight: 600;">Columnas:</label>
+          <select id="gallery-columns-select" class="form-control" style="width: auto; padding: 4px 10px; font-size: 0.85rem; border-radius: 6px;" onchange="_galleryCurrentColumns=parseInt(this.value)||3">
+            <option value="2">2 columnas</option>
+            <option value="3" selected>3 columnas</option>
+            <option value="4">4 columnas</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Barra de acciones para añadir fotos -->
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('gallery-multi-upload-input').click()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Subir fotos del ordenador</span>
+        </button>
+        <input type="file" id="gallery-multi-upload-input" accept="image/*" multiple style="display:none;" onchange="handleGalleryFilesSelected(this.files)">
+
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openGalleryMediaPicker()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Elegir de la biblioteca</span>
+        </button>
+
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addGalleryImageUrlPrompt()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>🔗 Añadir por URL</span>
+        </button>
+
+        <span id="gallery-items-count" style="margin-left: auto; font-size: 0.82rem; color: var(--muted); font-weight: 600;">0 fotos</span>
+      </div>
+
+      <!-- Barra de progreso de subida -->
+      <div id="gallery-upload-progress" style="display: none; padding: 8px 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; font-size: 0.82rem; color: var(--text);">
+        Subiendo imágenes... (<span id="gallery-upload-progress-text">0/0</span>)
+      </div>
+
+      <!-- Lista / Grilla de fotos seleccionadas en la galería -->
+      <div id="gallery-items-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; min-height: 180px; max-height: 420px; overflow-y: auto; padding: 4px; border: 1px dashed var(--border); border-radius: 10px; background: rgba(0,0,0,0.02);">
+        <!-- Generado dinámicamente -->
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="display: flex; justify-content: flex-end; gap: 10px; padding: 1rem 1.4rem; border-top: 1px solid var(--border); background: var(--surface);">
+      <button type="button" class="btn btn-secondary" onclick="closeGalleryBuilderModal()">Cancelar</button>
+      <button type="button" id="gallery-submit-btn" class="btn btn-primary" onclick="submitGalleryBuilder()">Insertar galería</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Gallery Builder Logic ────────────────────────────────────────────────
+let _galleryCurrentItems = [];
+let _galleryCurrentLayout = 'grid';
+let _galleryCurrentColumns = 3;
+let _gallerySaveCallback = null;
+
+function openGalleryBuilderModal(currentData = null, onSaveCallback = null) {
+  _gallerySaveCallback = onSaveCallback || null;
+  const modal = document.getElementById('gallery-builder-modal');
+  const submitBtn = document.getElementById('gallery-submit-btn');
+
+  if (currentData) {
+    _galleryCurrentLayout = currentData.layout || 'grid';
+    _galleryCurrentColumns = currentData.columns || 3;
+    _galleryCurrentItems = Array.isArray(currentData.images) ? JSON.parse(JSON.stringify(currentData.images)) : [];
+    if (submitBtn) submitBtn.textContent = 'Actualizar galería';
+  } else {
+    _galleryCurrentLayout = 'grid';
+    _galleryCurrentColumns = 3;
+    _galleryCurrentItems = [];
+    if (submitBtn) submitBtn.textContent = 'Insertar galería';
+  }
+
+  setGalleryLayout(_galleryCurrentLayout);
+  const colSelect = document.getElementById('gallery-columns-select');
+  if (colSelect) colSelect.value = String(_galleryCurrentColumns);
+
+  renderGalleryBuilderItems();
+
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeGalleryBuilderModal() {
+  const modal = document.getElementById('gallery-builder-modal');
+  if (modal) modal.style.display = 'none';
+  _gallerySaveCallback = null;
+  _galleryCurrentItems = [];
+}
+
+function setGalleryLayout(layout) {
+  _galleryCurrentLayout = layout;
+  const gridBtn = document.getElementById('gallery-layout-grid-btn');
+  const carouselBtn = document.getElementById('gallery-layout-carousel-btn');
+  const colsWrap = document.getElementById('gallery-columns-wrap');
+
+  if (gridBtn && carouselBtn) {
+    if (layout === 'grid') {
+      gridBtn.classList.add('active');
+      gridBtn.style.background = 'var(--accent, #6366f1)';
+      gridBtn.style.color = '#fff';
+      carouselBtn.classList.remove('active');
+      carouselBtn.style.background = 'transparent';
+      carouselBtn.style.color = 'var(--text)';
+      if (colsWrap) colsWrap.style.display = 'flex';
+    } else {
+      carouselBtn.classList.add('active');
+      carouselBtn.style.background = 'var(--accent, #6366f1)';
+      carouselBtn.style.color = '#fff';
+      gridBtn.classList.remove('active');
+      gridBtn.style.background = 'transparent';
+      gridBtn.style.color = 'var(--text)';
+      if (colsWrap) colsWrap.style.display = 'none';
+    }
+  }
+}
+
+async function handleGalleryFilesSelected(files) {
+  if (!files || files.length === 0) return;
+  const fileList = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (fileList.length === 0) {
+    alert('Por favor selecciona archivos de imagen válidos.');
+    return;
+  }
+
+  const progressWrap = document.getElementById('gallery-upload-progress');
+  const progressText = document.getElementById('gallery-upload-progress-text');
+  if (progressWrap) progressWrap.style.display = 'block';
+
+  let doneCount = 0;
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
+    if (progressText) progressText.textContent = `${doneCount}/${fileList.length}`;
+
+    const fd = new FormData();
+    fd.append('upload', file);
+    fd.append('csrf', <?= json_encode($csrf) ?>);
+
+    try {
+      const res = await fetch(<?= json_encode(base_url() . '/admin/upload_media.php') ?>, {
+        method: 'POST',
+        body: fd
+      });
+      const data = await res.json();
+      if (data && data.url) {
+        _galleryCurrentItems.push({
+          url: data.url,
+          alt: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          caption: ''
+        });
+        renderGalleryBuilderItems();
+      }
+    } catch (err) {
+      console.error('Error uploading gallery image:', err);
+    }
+    doneCount++;
+    if (progressText) progressText.textContent = `${doneCount}/${fileList.length}`;
+  }
+
+  if (progressWrap) {
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 800);
+  }
+  const fileInput = document.getElementById('gallery-multi-upload-input');
+  if (fileInput) fileInput.value = '';
+}
+
+function renderGalleryBuilderItems() {
+  const container = document.getElementById('gallery-items-container');
+  const countEl = document.getElementById('gallery-items-count');
+  if (countEl) countEl.textContent = `${_galleryCurrentItems.length} foto${_galleryCurrentItems.length === 1 ? '' : 's'}`;
+  if (!container) return;
+
+  if (_galleryCurrentItems.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:35px 20px; color:var(--muted); text-align:center;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="margin-bottom:8px; opacity:0.6;"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <div style="font-size:0.9rem; font-weight:600; margin-bottom:4px;">No hay fotos en esta galería aún</div>
+        <div style="font-size:0.8rem;">Pulsa "Subir fotos del ordenador" (puedes seleccionar varias a la vez), "Elegir de la biblioteca" o "Añadir por URL".</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  _galleryCurrentItems.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'gallery-builder-card';
+    card.style.cssText = 'position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 8px rgba(0,0,0,0.06);';
+
+    const thumbWrap = document.createElement('div');
+    thumbWrap.style.cssText = 'position:relative; width:100%; height:130px; background:#0b0c10; overflow:hidden;';
+
+    const img = document.createElement('img');
+    img.src = item.url;
+    img.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+    thumbWrap.appendChild(img);
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.title = 'Eliminar foto de la galería';
+    delBtn.innerHTML = '&times;';
+    delBtn.style.cssText = 'position:absolute; top:6px; right:6px; background:rgba(239,68,68,0.85); color:#fff; border:none; border-radius:50%; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; transition:all 0.15s;';
+    delBtn.onmouseover = () => { delBtn.style.background = '#ef4444'; delBtn.style.transform = 'scale(1.1)'; };
+    delBtn.onmouseout = () => { delBtn.style.background = 'rgba(239,68,68,0.85)'; delBtn.style.transform = 'scale(1)'; };
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeGalleryItem(idx);
+    };
+    thumbWrap.appendChild(delBtn);
+
+    // Reorder buttons (left / right)
+    const reorderWrap = document.createElement('div');
+    reorderWrap.style.cssText = 'position:absolute; bottom:6px; left:6px; display:flex; gap:4px;';
+
+    if (idx > 0) {
+      const leftBtn = document.createElement('button');
+      leftBtn.type = 'button';
+      leftBtn.title = 'Mover hacia la izquierda';
+      leftBtn.innerHTML = '←';
+      leftBtn.style.cssText = 'background:rgba(20,22,28,0.8); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer;';
+      leftBtn.onclick = (e) => { e.stopPropagation(); moveGalleryItem(idx, -1); };
+      reorderWrap.appendChild(leftBtn);
+    }
+    if (idx < _galleryCurrentItems.length - 1) {
+      const rightBtn = document.createElement('button');
+      rightBtn.type = 'button';
+      rightBtn.title = 'Mover hacia la derecha';
+      rightBtn.innerHTML = '→';
+      rightBtn.style.cssText = 'background:rgba(20,22,28,0.8); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:4px; padding:2px 7px; font-size:11px; cursor:pointer;';
+      rightBtn.onclick = (e) => { e.stopPropagation(); moveGalleryItem(idx, 1); };
+      reorderWrap.appendChild(rightBtn);
+    }
+    thumbWrap.appendChild(reorderWrap);
+    card.appendChild(thumbWrap);
+
+    // Input fields
+    const inputsWrap = document.createElement('div');
+    inputsWrap.style.cssText = 'padding:8px 10px; display:flex; flex-direction:column; gap:6px;';
+
+    const capInput = document.createElement('input');
+    capInput.type = 'text';
+    capInput.placeholder = 'Pie de foto (opcional)';
+    capInput.value = item.caption || '';
+    capInput.style.cssText = 'width:100%; font-size:0.8rem; padding:4px 8px; border:1px solid var(--border); border-radius:5px; background:var(--surface); color:var(--text);';
+    capInput.oninput = (e) => { _galleryCurrentItems[idx].caption = e.target.value; };
+    inputsWrap.appendChild(capInput);
+
+    const altInput = document.createElement('input');
+    altInput.type = 'text';
+    altInput.placeholder = 'Texto alternativo (alt)';
+    altInput.value = item.alt || '';
+    altInput.style.cssText = 'width:100%; font-size:0.75rem; padding:3px 8px; border:1px solid var(--border); border-radius:5px; background:var(--surface); color:var(--muted);';
+    altInput.oninput = (e) => { _galleryCurrentItems[idx].alt = e.target.value; };
+    inputsWrap.appendChild(altInput);
+
+    card.appendChild(inputsWrap);
+    container.appendChild(card);
+  });
+}
+
+function removeGalleryItem(idx) {
+  _galleryCurrentItems.splice(idx, 1);
+  renderGalleryBuilderItems();
+}
+
+function moveGalleryItem(idx, dir) {
+  const target = idx + dir;
+  if (target < 0 || target >= _galleryCurrentItems.length) return;
+  const temp = _galleryCurrentItems[idx];
+  _galleryCurrentItems[idx] = _galleryCurrentItems[target];
+  _galleryCurrentItems[target] = temp;
+  renderGalleryBuilderItems();
+}
+
+function addGalleryImageUrlPrompt() {
+  const url = prompt('Introduce la URL directa de la imagen:');
+  if (!url || !url.trim()) return;
+  _galleryCurrentItems.push({
+    url: url.trim(),
+    alt: '',
+    caption: ''
+  });
+  renderGalleryBuilderItems();
+}
+
+function openGalleryMediaPicker() {
+  openImageInsertModal(function(url) {
+    if (url) {
+      _galleryCurrentItems.push({
+        url: url,
+        alt: '',
+        caption: ''
+      });
+      renderGalleryBuilderItems();
+    }
+  });
+}
+
+function submitGalleryBuilder() {
+  if (_galleryCurrentItems.length === 0) {
+    alert('Por favor añade al menos una imagen a la galería.');
+    return;
+  }
+
+  const colSelect = document.getElementById('gallery-columns-select');
+  _galleryCurrentColumns = colSelect ? parseInt(colSelect.value) || 3 : 3;
+
+  const galleryData = {
+    layout: _galleryCurrentLayout,
+    columns: _galleryCurrentColumns,
+    images: _galleryCurrentItems
+  };
+
+  if (_gallerySaveCallback) {
+    _gallerySaveCallback(galleryData);
+    closeGalleryBuilderModal();
+    return;
+  }
+
+  // Inserción nueva
+  const curMode = mode || 'visual';
+  if (curMode === 'visual' && window.pmEditor) {
+    window.pmEditor.chain().focus().setGallery(galleryData).run();
+  } else {
+    const isCarousel = galleryData.layout === 'carousel';
+    let html = `\n<div class="kutblog-gallery layout-${galleryData.layout}" data-layout="${galleryData.layout}" data-columns="${galleryData.columns}" data-images="${encodeURIComponent(JSON.stringify(galleryData.images))}">\n`;
+    if (isCarousel) {
+      html += `  <div class="kutblog-gallery-carousel">\n    <div class="kutblog-carousel-track">\n`;
+      galleryData.images.forEach(img => {
+        html += `      <figure class="kutblog-gallery-item"><img src="${img.url}" alt="${img.alt || ''}" loading="lazy">${img.caption ? `<figcaption>${img.caption}</figcaption>` : ''}</figure>\n`;
+      });
+      html += `    </div>\n    <button type="button" class="kutblog-carousel-btn prev" aria-label="Anterior">‹</button>\n    <button type="button" class="kutblog-carousel-btn next" aria-label="Siguiente">›</button>\n  </div>\n</div>\n`;
+    } else {
+      html += `  <div class="kutblog-gallery-grid cols-${galleryData.columns}" style="--gallery-cols: ${galleryData.columns};">\n`;
+      galleryData.images.forEach(img => {
+        html += `    <figure class="kutblog-gallery-item"><img src="${img.url}" alt="${img.alt || ''}" loading="lazy">${img.caption ? `<figcaption>${img.caption}</figcaption>` : ''}</figure>\n`;
+      });
+      html += `  </div>\n</div>\n`;
+    }
+
+    if (curMode === 'markdown') {
+      const mdEd = document.getElementById('markdown-editor');
+      if (mdEd) {
+        const start = mdEd.selectionStart || 0;
+        const end = mdEd.selectionEnd || 0;
+        mdEd.value = mdEd.value.substring(0, start) + html + mdEd.value.substring(end);
+        mdEd.selectionStart = mdEd.selectionEnd = start + html.length;
+        mdEd.focus();
+        mdEd.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else {
+      const rawEd = document.getElementById('raw-editor');
+      if (rawEd) {
+        const start = rawEd.selectionStart || 0;
+        const end = rawEd.selectionEnd || 0;
+        rawEd.value = rawEd.value.substring(0, start) + html + rawEd.value.substring(end);
+        rawEd.selectionStart = rawEd.selectionEnd = start + html.length;
+        rawEd.focus();
+        rawEd.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+
+  closeGalleryBuilderModal();
+}
+</script>
 
 <!-- focus hint -->
 <div class="focus-exit-hint">

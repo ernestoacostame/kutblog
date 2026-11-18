@@ -1,6 +1,6 @@
 <?php
 // KutBlog - Configuration
-define('CMS_VERSION', '2.3.47');
+define('CMS_VERSION', '2.3.48');
 define('CMS_NAME', 'KutBlog');
 define('ROOT_PATH', dirname(__DIR__));
 define('CONTENT_PATH', ROOT_PATH . '/content');
@@ -11,6 +11,7 @@ define('CONFIG_FILE', ROOT_PATH . '/config.json');
 define('INSTALLED_FLAG', ROOT_PATH . '/.installed');
 require_once __DIR__ . '/image_cache.php';
 require_once __DIR__ . '/media.php';
+require_once __DIR__ . '/gallery.php';
 
 function cms_config(): array {
     if (!file_exists(CONFIG_FILE)) return [];

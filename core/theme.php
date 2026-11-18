@@ -98,6 +98,19 @@ function render_theme(string $template, array $vars = []): void {
     if (function_exists('cms_sanitize_local_file_urls')) {
         $rendered = cms_sanitize_local_file_urls($rendered);
     }
+    if (str_contains($rendered, 'kutblog-gallery') && function_exists('kutblog_gallery_assets')) {
+        $galleryAssets = kutblog_gallery_assets();
+        if (str_contains($rendered, '</head>')) {
+            $rendered = str_replace('</head>', $galleryAssets['css'] . '</head>', $rendered);
+        } else {
+            $rendered = $galleryAssets['css'] . $rendered;
+        }
+        if (str_contains($rendered, '</body>')) {
+            $rendered = str_replace('</body>', $galleryAssets['js'] . '</body>', $rendered);
+        } else {
+            $rendered .= $galleryAssets['js'];
+        }
+    }
     echo $rendered;
 }
 
