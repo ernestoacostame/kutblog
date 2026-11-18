@@ -6,22 +6,14 @@ require_once dirname(__DIR__) . '/core/theme.php';
 require_once __DIR__ . '/layout.php';
 require_login();
 
-// Collect existing categories and tags for autocomplete
-$all_cats = [];
-$all_tags_list = [];
-foreach (['articles', 'pages'] as $_ctype) {
-    $_dir = CONTENT_PATH . '/' . $_ctype;
-    if (!is_dir($_dir)) continue;
-    foreach (glob("$_dir/*.json") as $_f) {
-        $_p = json_decode(file_get_contents($_f), true);
-        foreach ($_p['categories'] ?? [] as $_c) if ($_c) $all_cats[$_c] = true;
-        foreach ($_p['tags'] ?? [] as $_t) if ($_t) $all_tags_list[$_t] = true;
-    }
+// Collect existing and registered categories and tags for autocomplete
+if (function_exists('cms_taxonomies_get')) {
+    $all_cats = array_column(cms_taxonomies_get('categories'), 'name');
+    $all_tags_list = array_column(cms_taxonomies_get('tags'), 'name');
+} else {
+    $all_cats = [];
+    $all_tags_list = [];
 }
-$all_cats = array_keys($all_cats);
-$all_tags_list = array_keys($all_tags_list);
-sort($all_cats);
-sort($all_tags_list);
 
 $type = in_array($_GET['type'] ?? '', ['articles', 'pages']) ? $_GET['type'] : 'articles';
 $slug = $_GET['slug'] ?? '';

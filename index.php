@@ -151,15 +151,39 @@ if ($path === '' || $path === 'blog') {
 
 // ── Category archive ──────────────────────────────────────────────────────
 } elseif ($type === 'category' && $slug) {
-    $all      = list_content('articles', true, 1, 9999);
-    $filtered = array_values(array_filter($all['items'], fn($p) => in_array(urldecode($slug), $p['categories'] ?? [])));
-    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'category' => urldecode($slug)]);
+    $all         = list_content('articles', true, 1, 9999);
+    $decodedSlug = urldecode($slug);
+    $targetSlug  = slug_from_title($decodedSlug);
+    $targetLower = mb_strtolower($decodedSlug, 'UTF-8');
+    $displayCat  = $decodedSlug;
+    $filtered = array_values(array_filter($all['items'], function($p) use ($decodedSlug, $targetSlug, $targetLower, &$displayCat) {
+        foreach ($p['categories'] ?? [] as $c) {
+            if ($c === $decodedSlug || mb_strtolower((string)$c, 'UTF-8') === $targetLower || slug_from_title((string)$c) === $targetSlug) {
+                $displayCat = $c;
+                return true;
+            }
+        }
+        return false;
+    }));
+    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'category' => $displayCat]);
 
 // ── Tag archive ───────────────────────────────────────────────────────────
 } elseif ($type === 'tag' && $slug) {
-    $all      = list_content('articles', true, 1, 9999);
-    $filtered = array_values(array_filter($all['items'], fn($p) => in_array(urldecode($slug), $p['tags'] ?? [])));
-    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'tag' => urldecode($slug)]);
+    $all         = list_content('articles', true, 1, 9999);
+    $decodedSlug = urldecode($slug);
+    $targetSlug  = slug_from_title($decodedSlug);
+    $targetLower = mb_strtolower($decodedSlug, 'UTF-8');
+    $displayTag  = $decodedSlug;
+    $filtered = array_values(array_filter($all['items'], function($p) use ($decodedSlug, $targetSlug, $targetLower, &$displayTag) {
+        foreach ($p['tags'] ?? [] as $t) {
+            if ($t === $decodedSlug || mb_strtolower((string)$t, 'UTF-8') === $targetLower || slug_from_title((string)$t) === $targetSlug) {
+                $displayTag = $t;
+                return true;
+            }
+        }
+        return false;
+    }));
+    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'tag' => $displayTag]);
 
 // ── Search ────────────────────────────────────────────────────────────────
 } elseif ($type === 'search') {

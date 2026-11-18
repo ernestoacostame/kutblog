@@ -44,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
 
 $page = max(1, (int)($_GET['page'] ?? 1));
 $status_filter = $_GET['status'] ?? null;
+$category_filter = trim($_GET['category'] ?? '');
+$tag_filter = trim($_GET['tag'] ?? '');
 $published_only = false;
 if ($status_filter === 'published') {
     $published_only = true;
@@ -59,12 +61,33 @@ if ($status_filter === 'published') {
 } elseif ($status_filter === 'scheduled') {
     $filtered_items = array_filter($filtered_items, fn($p) => ($p['status'] ?? '') === 'scheduled');
 }
+if ($category_filter !== '') {
+    $filtered_items = array_filter($filtered_items, function($p) use ($category_filter) {
+        foreach ($p['categories'] ?? [] as $c) {
+            if (strcasecmp((string)$c, $category_filter) === 0) return true;
+        }
+        return false;
+    });
+}
+if ($tag_filter !== '') {
+    $filtered_items = array_filter($filtered_items, function($p) use ($tag_filter) {
+        foreach ($p['tags'] ?? [] as $t) {
+            if (strcasecmp((string)$t, $tag_filter) === 0) return true;
+        }
+        return false;
+    });
+}
 $per_page = 10;
 $total = count($filtered_items);
 $pages = (int)ceil($total / $per_page);
 $offset = ($page - 1) * $per_page;
 $items = array_slice($filtered_items, $offset, $per_page);
 $result = ['items' => $items, 'total' => $total, 'pages' => $pages, 'page' => $page];
+
+$filter_query = '';
+if ($status_filter) $filter_query .= '&status=' . urlencode($status_filter);
+if ($category_filter) $filter_query .= '&category=' . urlencode($category_filter);
+if ($tag_filter) $filter_query .= '&tag=' . urlencode($tag_filter);
 
 admin_header(__("nav_articles"), 'articles');
 ?>
@@ -103,6 +126,13 @@ admin_header(__("nav_articles"), 'articles');
           <a href="articles.php?status=draft" class="btn btn-sm <?= $status_filter === 'draft' ? 'btn-primary' : 'btn-secondary' ?>"><?= __("dash_drafts", "Borradores") ?></a>
         </div>
       </div>
+
+      <?php if ($category_filter !== '' || $tag_filter !== ''): ?>
+      <div style="padding:0.65rem 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.6rem;font-size:0.88rem">
+        <span>Filtrando por: <strong><?= htmlspecialchars($category_filter ? "Categoría: $category_filter" : "Etiqueta: $tag_filter") ?></strong></span>
+        <a href="articles.php<?= $status_filter ? '?status=' . urlencode($status_filter) : '' ?>" class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:0.8rem">✕ Quitar filtro</a>
+      </div>
+      <?php endif; ?>
 
       <?php if (empty($result['items'])): ?>
         <div class="card-body" style="text-align:center;color:var(--muted);padding:3.5rem 1.5rem">
@@ -193,8 +223,8 @@ admin_header(__("nav_articles"), 'articles');
       <?php if ($result['pages'] > 1): ?>
       <div style="padding:1.25rem 1.6rem;display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;border-top:1px solid var(--border)">
           <?php if ($page > 1): ?>
-          <a href="?page=1<?= $status_filter ? '&status=' . htmlspecialchars($status_filter) : '' ?>" class="page-btn">«</a>
-          <a href="?page=<?= $page - 1 ?><?= $status_filter ? '&status=' . htmlspecialchars($status_filter) : '' ?>" class="page-btn">‹</a>
+          <a href="?page=1<?= $filter_query ?>" class="page-btn">«</a>
+          <a href="?page=<?= $page - 1 ?><?= $filter_query ?>" class="page-btn">‹</a>
           <?php endif; ?>
           
           <?php
@@ -206,7 +236,7 @@ admin_header(__("nav_articles"), 'articles');
           }
           
           for ($i = $start_page; $i <= $end_page; $i++): ?>
-          <a href="?page=<?= $i ?><?= $status_filter ? '&status=' . htmlspecialchars($status_filter) : '' ?>" class="page-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+          <a href="?page=<?= $i ?><?= $filter_query ?>" class="page-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
           <?php endfor; ?>
           
           <?php if ($end_page < $result['pages']): ?>
@@ -214,8 +244,8 @@ admin_header(__("nav_articles"), 'articles');
           <?php endif; ?>
           
           <?php if ($page < $result['pages']): ?>
-          <a href="?page=<?= $page + 1 ?><?= $status_filter ? '&status=' . htmlspecialchars($status_filter) : '' ?>" class="page-btn">›</a>
-          <a href="?page=<?= $result['pages'] ?><?= $status_filter ? '&status=' . htmlspecialchars($status_filter) : '' ?>" class="page-btn">»</a>
+          <a href="?page=<?= $page + 1 ?><?= $filter_query ?>" class="page-btn">›</a>
+          <a href="?page=<?= $result['pages'] ?><?= $filter_query ?>" class="page-btn">»</a>
           <?php endif; ?>
       </div>
       <?php endif; ?>

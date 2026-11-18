@@ -1,6 +1,6 @@
 <?php
 // KutBlog - Configuration
-define('CMS_VERSION', '2.3.49');
+define('CMS_VERSION', '2.3.50');
 define('CMS_NAME', 'KutBlog');
 define('ROOT_PATH', dirname(__DIR__));
 define('CONTENT_PATH', ROOT_PATH . '/content');
@@ -13,6 +13,9 @@ require_once __DIR__ . '/image_cache.php';
 require_once __DIR__ . '/media.php';
 if (file_exists(__DIR__ . '/gallery.php')) {
     require_once __DIR__ . '/gallery.php';
+}
+if (file_exists(__DIR__ . '/taxonomies.php')) {
+    require_once __DIR__ . '/taxonomies.php';
 }
 
 function cms_config(): array {
