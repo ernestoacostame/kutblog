@@ -379,10 +379,6 @@ function openEditModal(name, slug, desc) {
   showModal('modal-tax-form');
   setTimeout(() => document.getElementById('form-name').focus(), 50);
 }
-  document.getElementById('rename-warning').style.display = 'block';
-  showModal('modal-tax-form');
-  setTimeout(() => document.getElementById('form-name').focus(), 50);
-}
 
 function openMergeModal(name) {
   document.getElementById('merge-source-name').value = name;
