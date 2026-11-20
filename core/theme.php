@@ -127,7 +127,38 @@ function render_theme(string $template, array $vars = []): void {
             $rendered .= $galleryAssets['js'];
         }
     }
+    if ($template === 'single' && !empty($vars['post']) && !str_contains($rendered, 'kutblog-admin-edit-btn') && cms_current_user_can_edit_post($vars['post'])) {
+        $editUrl = cms_post_edit_url($vars['post'], (string)($vars['type'] ?? 'articles'));
+        if ($editUrl !== '') {
+            $editLabel = (function_exists('site_lang') && site_lang() === 'en') ? 'Edit' : 'Editar';
+            $btnHtml = '<a href="' . htmlspecialchars($editUrl, ENT_QUOTES, 'UTF-8') . '" class="kutblog-admin-edit-btn" style="position:fixed;right:20px;bottom:20px;z-index:999;display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:999px;background:var(--accent,var(--primary,#6366f1));color:#fff;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.28);">'
+                . '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>'
+                . '<span>' . $editLabel . '</span></a>';
+            $rendered = str_contains($rendered, '</body>')
+                ? str_replace('</body>', $btnHtml . '</body>', $rendered)
+                : ($rendered . $btnHtml);
+        }
+    }
     echo $rendered;
+}
+
+function cms_current_user_can_edit_post(array $post): bool {
+    $hasAuthCookie = isset($_COOKIE[session_name()]) || !empty($_COOKIE['kutblog_remember']);
+    if (!$hasAuthCookie) {
+        return false;
+    }
+    if (!function_exists('is_logged_in') || !is_logged_in()) {
+        return false;
+    }
+    $role = $_SESSION['user_role'] ?? '';
+    return in_array($role, ['admin', 'editor'], true);
+}
+
+function cms_post_edit_url(array $post, string $type = 'articles'): string {
+    $slug = $post['slug'] ?? '';
+    if ($slug === '') return '';
+    $t = ($type === 'pages') ? 'pages' : 'articles';
+    return base_url() . '/admin/editor.php?type=' . urlencode($t) . '&slug=' . urlencode($slug);
 }
 
 function theme_asset_url(string $asset): string {

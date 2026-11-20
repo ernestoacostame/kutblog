@@ -282,6 +282,17 @@ $recent_articles = function_exists('list_content') ? list_content('articles', tr
         </div>
       </div>
       <?php endif; ?>
+      <?php if (function_exists('cms_current_user_can_edit_post') && cms_current_user_can_edit_post($post ?? [])): ?>
+        <?php $editUrl = cms_post_edit_url($post, $type ?? 'articles'); ?>
+        <?php if ($editUrl !== ''): ?>
+        <div style="margin-top:0.85rem;padding-top:0.85rem;border-top:1px solid var(--border,rgba(128,128,128,0.2));">
+          <a href="<?= htmlspecialchars($editUrl) ?>" class="kutblog-admin-edit-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:0.55rem 0.9rem;border-radius:8px;background:var(--accent,var(--primary,#6366f1));color:#fff;font-size:0.85rem;font-weight:600;text-decoration:none;transition:opacity .15s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span><?= (function_exists('site_lang') && site_lang() === 'en') ? 'Edit' : 'Editar' ?></span>
+          </a>
+        </div>
+        <?php endif; ?>
+      <?php endif; ?>
     </div>
   </aside>
 </div>
