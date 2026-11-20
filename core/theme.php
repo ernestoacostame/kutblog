@@ -43,6 +43,14 @@ function render_theme(string $template, array $vars = []): void {
     }
 
     if (isset($vars['post']['content'])) {
+        if ($template === 'single' && ($vars['type'] ?? '') !== 'pages') {
+            if (($vars['post']['content_format'] ?? '') === 'markdown' && function_exists('flux_markdown')) {
+                $vars['post']['content'] = flux_markdown($vars['post']['content']);
+                $vars['post']['content_format'] = 'html';
+            }
+            require_once ROOT_PATH . '/core/toc.php';
+            $vars['post']['content'] = cms_inject_toc($vars['post']['content']);
+        }
         if (cms_plugin_is_active('kutpod') && function_exists('kutpod_filter_content')) {
             $vars['post']['content'] = kutpod_filter_content($vars['post']['content'], $vars['post']);
         }
@@ -97,6 +105,14 @@ function render_theme(string $template, array $vars = []): void {
     $rendered = ob_get_clean();
     if (function_exists('cms_sanitize_local_file_urls')) {
         $rendered = cms_sanitize_local_file_urls($rendered);
+    }
+    if (str_contains($rendered, 'kutblog-toc') && function_exists('kutblog_toc_assets')) {
+        $tocCss = kutblog_toc_assets();
+        if (str_contains($rendered, '</head>')) {
+            $rendered = str_replace('</head>', $tocCss . '</head>', $rendered);
+        } else {
+            $rendered = $tocCss . $rendered;
+        }
     }
     if (str_contains($rendered, 'kutblog-gallery') && function_exists('kutblog_gallery_assets')) {
         $galleryAssets = kutblog_gallery_assets();

@@ -387,4 +387,7 @@ return [
     'tax_desc_placeholder'  => 'Short public description...',
     'tax_save_changes'      => 'Save changes',
     'tax_view_on_blog'      => 'View on blog',
+    'field_toc_enabled'     => 'Show table of contents on posts',
+    'field_toc_open'        => 'Table of contents expanded by default',
+    'field_toc_min_headings'=> 'Minimum headings required for TOC',
 ];

@@ -387,4 +387,7 @@ return [
     'tax_desc_placeholder'  => 'Breve descripción o temática de este término',
     'tax_save_changes'      => 'Guardar cambios',
     'tax_view_on_blog'      => 'Ver en el blog',
+    'field_toc_enabled'     => 'Mostrar tabla de contenidos en los artículos',
+    'field_toc_open'        => 'Tabla de contenidos abierta por defecto',
+    'field_toc_min_headings'=> 'Mínimo de encabezados para mostrar TOC',
 ];

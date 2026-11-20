@@ -33,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $config['footer_text'] = trim($_POST['footer_text'] ?? '');
             $config['language'] = in_array($_POST['language'] ?? '', ['es', 'en'], true) ? $_POST['language'] : 'es';
             $config['timezone'] = in_array($_POST['timezone'] ?? '', timezone_identifiers_list(), true) ? $_POST['timezone'] : (date_default_timezone_get() ?: 'UTC');
+            $config['toc_enabled'] = isset($_POST['toc_enabled']) ? '1' : '0';
+            $config['toc_open'] = isset($_POST['toc_open']) ? '1' : '0';
+            $config['toc_min_headings'] = max(2, min(10, (int)($_POST['toc_min_headings'] ?? 2)));
             cms_save_config($config);
             $msg = __("saved_general", "Ajustes generales guardados.");
             $active_section = 'general';
@@ -366,6 +369,22 @@ admin_header(__("settings_title"), 'settings');
                 <div class="form-group">
                   <label class="form-label"><?= __("field_footer_text") ?></label>
                   <input type="text" name="footer_text" value="<?= htmlspecialchars($config['footer_text'] ?? '') ?>">
+                </div>
+                <div class="form-row" style="align-items:center;margin-bottom:14px">
+                  <div class="form-group" style="margin-bottom:0">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+                      <input type="checkbox" name="toc_enabled" value="1" <?= ($config['toc_enabled'] ?? '1') !== '0' ? 'checked' : '' ?> style="width:16px;height:16px">
+                      <span><?= __("field_toc_enabled", "Mostrar tabla de contenidos en los artículos") ?></span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;margin-top:8px">
+                      <input type="checkbox" name="toc_open" value="1" <?= ($config['toc_open'] ?? '1') !== '0' ? 'checked' : '' ?> style="width:16px;height:16px">
+                      <span><?= __("field_toc_open", "Tabla de contenidos abierta por defecto") ?></span>
+                    </label>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label"><?= __("field_toc_min_headings", "Mínimo de encabezados para mostrar TOC") ?></label>
+                    <input type="number" name="toc_min_headings" value="<?= (int)($config['toc_min_headings'] ?? 2) ?>" min="2" max="10">
+                  </div>
                 </div>
                 <button type="submit" class="btn btn-primary"><?= __("btn_save_settings") ?></button>
               </form>
