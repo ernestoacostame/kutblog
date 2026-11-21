@@ -478,6 +478,8 @@ function ap_endpoint_inbox(string $username): void {
                     $full_username = "@{$author_username}@{$host}";
                     $author_avatar = $info['icon']['url'] ?? '';
 
+                    $clean_content = ap_sanitize_comment_html((string)($note['content'] ?? ''));
+
                     ap_exec("INSERT OR REPLACE INTO ap_comments (id, post_slug, actor_url, author_name, author_username, author_avatar, content, published_at, in_reply_to, depth) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
                         $note['id'],
                         $post_slug,
@@ -485,7 +487,7 @@ function ap_endpoint_inbox(string $username): void {
                         $author_name,
                         $full_username,
                         $author_avatar,
-                        $note['content'] ?? '',
+                        $clean_content,
                         $note['published'] ?? date('c'),
                         $in_reply_to_comment ?: null,
                         $depth
@@ -811,10 +813,97 @@ function ap_verify_signature(string $body): bool {
     return true;
 }
 
+function ap_sanitize_comment_html(string $html): string {
+    $html = trim($html);
+    if ($html === '' || !class_exists('DOMDocument')) {
+        return htmlspecialchars($html, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    $allowedTags = ['p', 'br', 'a', 'span', 'strong', 'b', 'em', 'i', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre'];
+    $dropCompletely = ['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'svg', 'math'];
+
+    $prev = libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    $loaded = $dom->loadHTML('<?xml encoding="utf-8" ?><div id="ap-root">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+
+    if (!$loaded) {
+        return htmlspecialchars($html, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    $sanitizeNode = function (DOMNode $node) use (&$sanitizeNode, $allowedTags, $dropCompletely): void {
+        if (!$node->hasChildNodes()) {
+            return;
+        }
+        $children = [];
+        foreach ($node->childNodes as $child) {
+            $children[] = $child;
+        }
+        foreach ($children as $child) {
+            if ($child instanceof DOMElement) {
+                $tag = strtolower($child->localName ?? $child->nodeName);
+                if (in_array($tag, $dropCompletely, true)) {
+                    $node->removeChild($child);
+                    continue;
+                }
+                $sanitizeNode($child);
+                if (!in_array($tag, $allowedTags, true)) {
+                    while ($child->firstChild) {
+                        $node->insertBefore($child->firstChild, $child);
+                    }
+                    $node->removeChild($child);
+                    continue;
+                }
+                // Strip all attributes; on <a> keep only https?:// href
+                $hrefVal = null;
+                if ($tag === 'a' && $child->hasAttribute('href')) {
+                    $rawHref = trim($child->getAttribute('href'));
+                    if (preg_match('#^https?://#i', $rawHref)) {
+                        $hrefVal = $rawHref;
+                    }
+                }
+                $attrNames = [];
+                foreach ($child->attributes as $attr) {
+                    $attrNames[] = $attr->nodeName;
+                }
+                foreach ($attrNames as $name) {
+                    $child->removeAttribute($name);
+                }
+                if ($tag === 'a' && $hrefVal !== null) {
+                    $child->setAttribute('href', $hrefVal);
+                    $child->setAttribute('rel', 'nofollow noopener noreferrer');
+                    $child->setAttribute('target', '_blank');
+                }
+            } elseif ($child->nodeType !== XML_TEXT_NODE) {
+                $node->removeChild($child);
+            }
+        }
+    };
+
+    $root = $dom->getElementById('ap-root') ?: $dom->documentElement;
+    if (!$root) {
+        return '';
+    }
+    $sanitizeNode($root);
+
+    $out = '';
+    foreach ($root->childNodes as $child) {
+        $out .= $dom->saveHTML($child);
+    }
+    return $out;
+}
+
 function ap_fetch_actor(string $url): ?array {
+    if (!function_exists('cms_is_safe_remote_url') || !cms_is_safe_remote_url($url)) {
+        return null;
+    }
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
         CURLOPT_HTTPHEADER => ['Accept: application/activity+json'],
         CURLOPT_USERAGENT => 'KutBlog/1.0 (+' . ap_base_url() . ')',
         CURLOPT_CONNECTTIMEOUT => 3,

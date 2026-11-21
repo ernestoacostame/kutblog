@@ -5,11 +5,11 @@ require_once dirname(__DIR__) . '/core/content.php';
 require_login();
 
 $type = in_array($_GET['type'] ?? '', ['articles', 'pages']) ? $_GET['type'] : null;
-$slug = $_GET['slug'] ?? '';
+$slug = basename(trim($_GET['slug'] ?? ''));
 $csrf = $_GET['csrf'] ?? '';
 $perm = !empty($_GET['permanent']);
 
-if ($type && $slug && verify_csrf($csrf)) {
+if ($type && $slug && preg_match('/^[a-z0-9_-]+$/i', $slug) && verify_csrf($csrf)) {
     if ($perm) {
         purge_content($type, $slug);
         header("Location: " . base_url() . "/admin/trash.php?purged=1");

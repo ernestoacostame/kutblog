@@ -13,11 +13,11 @@ if (!verify_csrf($csrf)) {
 }
 
 $type = in_array($_REQUEST['type'] ?? '', ['articles','pages']) ? $_REQUEST['type'] : 'articles';
-$slug = trim($_REQUEST['slug'] ?? '');
+$slug = basename(trim($_REQUEST['slug'] ?? ''));
 $action = trim($_REQUEST['action'] ?? 'preview');
 
-if (!$slug) {
-    echo json_encode(['success' => false, 'error' => 'Falta el parámetro slug.']); exit;
+if (!$slug || !preg_match('/^[a-z0-9_-]+$/i', $slug)) {
+    echo json_encode(['success' => false, 'error' => 'Parámetro slug inválido.']); exit;
 }
 
 $backup_dir = CACHE_PATH . '/content_backups/' . $type;
@@ -39,9 +39,9 @@ if ($action === 'clear_all') {
 
 // Action: Delete single backup
 if ($action === 'delete') {
-    $timestamp = trim($_REQUEST['timestamp'] ?? '');
-    if (!$timestamp) {
-        echo json_encode(['success' => false, 'error' => 'Falta el timestamp.']); exit;
+    $timestamp = basename(trim($_REQUEST['timestamp'] ?? ''));
+    if (!$timestamp || !preg_match('/^[a-z0-9_-]+$/i', $timestamp)) {
+        echo json_encode(['success' => false, 'error' => 'Timestamp inválido.']); exit;
     }
     $backup_file = $backup_dir . '/' . $slug . '_' . $timestamp . '.json';
     if (!file_exists($backup_file)) {
@@ -54,9 +54,9 @@ if ($action === 'delete') {
 }
 
 // Action: Preview backup
-$timestamp = trim($_REQUEST['timestamp'] ?? '');
-if (!$timestamp) {
-    echo json_encode(['success' => false, 'error' => 'Falta el timestamp.']); exit;
+$timestamp = basename(trim($_REQUEST['timestamp'] ?? ''));
+if (!$timestamp || !preg_match('/^[a-z0-9_-]+$/i', $timestamp)) {
+    echo json_encode(['success' => false, 'error' => 'Timestamp inválido.']); exit;
 }
 
 $backup_file = $backup_dir . '/' . $slug . '_' . $timestamp . '.json';

@@ -37,8 +37,9 @@ $heading = isset($category) ? 'Category: ' . ucfirst($category) :
       <h2 class="post-card-title">
         <a href="<?= $base ?>/article/<?= htmlspecialchars($post['slug']) ?>"><?= htmlspecialchars($post['title'] ?? 'Untitled') ?></a>
       </h2>
-      <?php if (!empty($post['excerpt']) || !empty($post['content'])): ?>
-      <p class="post-excerpt"><?= htmlspecialchars(strip_tags($post['excerpt'] ?: substr(strip_tags($post['content']), 0, 200))) ?></p>
+      <?php $post_excerpt = $post['excerpt'] ?: ($post['_excerpt'] ?? (!empty($post['content']) ? substr(strip_tags($post['content']), 0, 200) : '')); ?>
+      <?php if ($post_excerpt !== ''): ?>
+      <p class="post-excerpt"><?= htmlspecialchars(strip_tags($post_excerpt)) ?></p>
       <?php endif; ?>
       <a href="<?= $base ?>/article/<?= htmlspecialchars($post['slug']) ?>" class="post-read-more">
         Read more <span>→</span>

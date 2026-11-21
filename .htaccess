@@ -1,4 +1,20 @@
-# KutBlog - minimal performance rules (Apache). Nginx users: see nginx.conf.example
+# KutBlog - security & performance rules (Apache). Nginx users: see nginx.conf.example
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(content|core|cache|cli)(/|$) - [F,L]
+  RewriteRule ^(config\.json|\.installed|release\.sh)$ - [F,L]
+</IfModule>
+
+<FilesMatch "(^config\.json$|^\.installed$|^release\.sh$|\.(db|sqlite|sqlite3|log)$)">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
   AddOutputFilterByType DEFLATE application/javascript text/javascript application/x-javascript

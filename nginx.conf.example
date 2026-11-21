@@ -73,8 +73,17 @@ server {
     #   post_max_size = 2G
     #   max_execution_time = 300
 
-    # ── Bloquear acceso a directorios sensibles ───────────────────────────
-    location ~* ^/(core|cache|content)(/|$) {
+    # ── Bloquear acceso a directorios y archivos sensibles ────────────────
+    location ~* ^/(core|cache|content|cli)(/|$) {
+        deny all; return 404;
+    }
+    location ~* ^/(config\.json|release\.sh)$ {
+        deny all; return 404;
+    }
+    location ~* ^/plugins/.*\.json$ {
+        deny all; return 404;
+    }
+    location ~* \.(db|sqlite|sqlite3|log)$ {
         deny all; return 404;
     }
     location ~ /\.(?!well-known) {

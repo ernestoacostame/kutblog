@@ -12,6 +12,27 @@ if (!is_installed()) {
     exit;
 }
 
+// ── Full-Page HTML Cache for Anonymous GETs ───────────────────────────────
+if (cms_is_page_cacheable()) {
+    $pageCacheFile = cms_page_cache_file();
+    if (file_exists($pageCacheFile) && filesize($pageCacheFile) > 0) {
+        $cacheMtime = (int)filemtime($pageCacheFile);
+        if ($cacheMtime >= cms_page_cache_freshness_mtime()) {
+            $etag = '"page-' . md5($pageCacheFile . '_' . $cacheMtime) . '"';
+            header('Cache-Control: public, max-age=60');
+            header('ETag: ' . $etag);
+            $ifNoneMatch = trim($_SERVER['HTTP_IF_NONE_MATCH'] ?? '');
+            if ($ifNoneMatch !== '' && $ifNoneMatch === $etag) {
+                http_response_code(304);
+                exit;
+            }
+            header('Content-Type: text/html; charset=UTF-8');
+            readfile($pageCacheFile);
+            exit;
+        }
+    }
+}
+
 $uri      = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $base     = rtrim(base_url(), '/');
 $path     = $base ? substr($uri, strlen(parse_url($base, PHP_URL_PATH))) : $uri;
@@ -165,7 +186,11 @@ if ($path === '' || $path === 'blog') {
         }
         return false;
     }));
-    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'category' => $displayCat]);
+    $page_num = max(1, (int)($_GET['page'] ?? 1));
+    $total    = count($filtered);
+    $pages    = max(1, (int)ceil($total / max(1, $per_page)));
+    $paged    = array_slice($filtered, ($page_num - 1) * $per_page, $per_page);
+    render_theme('index', ['posts' => ['items' => $paged, 'total' => $total, 'pages' => $pages, 'page' => $page_num], 'category' => $displayCat, 'page_num' => $page_num]);
 
 // ── Tag archive ───────────────────────────────────────────────────────────
 } elseif ($type === 'tag' && $slug) {
@@ -183,7 +208,11 @@ if ($path === '' || $path === 'blog') {
         }
         return false;
     }));
-    render_theme('index', ['posts' => ['items' => $filtered, 'total' => count($filtered), 'pages' => 1, 'page' => 1], 'tag' => $displayTag]);
+    $page_num = max(1, (int)($_GET['page'] ?? 1));
+    $total    = count($filtered);
+    $pages    = max(1, (int)ceil($total / max(1, $per_page)));
+    $paged    = array_slice($filtered, ($page_num - 1) * $per_page, $per_page);
+    render_theme('index', ['posts' => ['items' => $paged, 'total' => $total, 'pages' => $pages, 'page' => $page_num], 'tag' => $displayTag, 'page_num' => $page_num]);
 
 // ── Search ────────────────────────────────────────────────────────────────
 } elseif ($type === 'search') {

@@ -8,6 +8,8 @@ require_once dirname(__DIR__) . '/core/updater.php';
 require_once __DIR__ . '/layout.php';
 
 require_login();
+require_permission('manage_settings');
+$csrf = generate_csrf();
 
 $hasToken = !empty(cms_setting('update_github_token', ''));
 $rollbackVersion = cms_setting('update_rollback_version', '');
@@ -390,6 +392,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+const CMS_CSRF = <?= json_encode($csrf) ?>;
+
 function cmsSaveToken(e) {
   e.preventDefault();
   const token = document.getElementById('update_token_input').value.trim();
@@ -403,7 +407,7 @@ function cmsSaveToken(e) {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'save_token', token: token })
+    body: new URLSearchParams({ action: 'save_token', token: token, csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -529,7 +533,8 @@ function cmsUpdateApply() {
 
   const dlBody = new URLSearchParams({
     action: 'download',
-    zip_url: btoa(_updateData.zip_url)
+    zip_url: btoa(_updateData.zip_url),
+    csrf: CMS_CSRF
   });
 
   fetch('<?= base_url() ?>/api/update.php', { method: 'POST', body: dlBody })
@@ -552,7 +557,8 @@ function cmsUpdateApply() {
       const applyBody = new URLSearchParams({
         action: 'apply',
         zip_path: dlData.path,
-        new_version: _updateData.new_version
+        new_version: _updateData.new_version,
+        csrf: CMS_CSRF
       });
 
       return fetch('<?= base_url() ?>/api/update.php', { method: 'POST', body: applyBody })
@@ -614,7 +620,7 @@ function cmsUpdateRollback() {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'rollback', backup_file: backupFile })
+    body: new URLSearchParams({ action: 'rollback', backup_file: backupFile, csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -679,7 +685,7 @@ function cmsUpdateRollbackSpecific(backupFile) {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'rollback', backup_file: backupFile })
+    body: new URLSearchParams({ action: 'rollback', backup_file: backupFile, csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -717,7 +723,7 @@ function cmsDeleteBackupFile(backupFile) {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'delete_backup', backup_file: backupFile })
+    body: new URLSearchParams({ action: 'delete_backup', backup_file: backupFile, csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -742,7 +748,7 @@ function cmsDeleteBackupsBulk() {
   const files = Array.from(checked).map(c => c.value);
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'delete_backups_bulk', backup_files: JSON.stringify(files) })
+    body: new URLSearchParams({ action: 'delete_backups_bulk', backup_files: JSON.stringify(files), csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -760,7 +766,7 @@ function cmsDeleteAllBackups() {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'delete_all_backups' })
+    body: new URLSearchParams({ action: 'delete_all_backups', csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -778,7 +784,7 @@ function cmsClearUpdateHistory() {
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',
-    body: new URLSearchParams({ action: 'clear_history' })
+    body: new URLSearchParams({ action: 'clear_history', csrf: CMS_CSRF })
   })
     .then(r => r.json())
     .then(data => {
@@ -823,6 +829,7 @@ function cmsManualUpdateUpload(e) {
   const formData = new FormData();
   formData.append('action', 'upload');
   formData.append('zip_file', file);
+  formData.append('csrf', CMS_CSRF);
 
   fetch('<?= base_url() ?>/api/update.php', {
     method: 'POST',

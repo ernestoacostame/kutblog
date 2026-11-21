@@ -586,7 +586,7 @@ function cms_update_cleanup_tmp(string $dir): void {
 }
 
 function cms_update_delete_backup(string $filename): array {
-  if (!preg_match('/^rollback-(.*?)-(\d{8}_\d{6})\.tar\.gz$/', $filename)) {
+  if (!preg_match('/^rollback-([^\/]+?)-(\d{8}_\d{6})\.tar\.gz$/', $filename)) {
     return ['error' => 'Nombre de archivo de respaldo inválido.'];
   }
   $filePath = cms_update_dir() . '/' . $filename;

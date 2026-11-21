@@ -25,7 +25,7 @@ $count = count($results);
     $item_url = $base . '/' . ($is_art ? 'article' : 'page') . '/' . htmlspecialchars($item['slug']);
     $first_cat = !empty($item['categories'][0]) ? $item['categories'][0] : ($is_art ? 'Artículo' : 'Página');
     $has_image = !empty($item['featured_image']);
-    $words = str_word_count(strip_tags($item['content'] ?? ''));
+    $words = (int)($item['_word_count'] ?? str_word_count(strip_tags($item['content'] ?? '')));
     $read_time = max(1, (int)ceil($words / 200));
   ?>
   <article class="post-card">
@@ -64,7 +64,9 @@ $count = count($results);
 
       <?php
       $excerpt = $item['excerpt'] ?? '';
-      if (!$excerpt && !empty($item['content'])) {
+      if (!$excerpt && !empty($item['_excerpt'])) {
+          $excerpt = mb_substr($item['_excerpt'], 0, 130) . '…';
+      } elseif (!$excerpt && !empty($item['content'])) {
           $excerpt = mb_substr(strip_tags($item['content']), 0, 130) . '…';
       }
       ?>

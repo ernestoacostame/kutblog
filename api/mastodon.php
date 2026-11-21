@@ -38,6 +38,9 @@ if ($req_host === $base_host) {
 if (!preg_match('#^(https://[^/]+)/@[^/]+/(\d+)$#', $post_url, $m)) {
     echo json_encode(['error' => 'Not a valid Mastodon status URL', 'url' => $post_url]); exit;
 }
+if (!cms_is_safe_remote_url($post_url)) {
+    echo json_encode(['error' => 'Unsafe or disallowed remote URL']); exit;
+}
 $instance  = $m[1];
 $status_id = $m[2];
 
@@ -115,10 +118,15 @@ file_put_contents($cache_key, $json);
 echo $json;
 
 function mastodon_get(string $url): ?array {
+    if (!cms_is_safe_remote_url($url)) {
+        return null;
+    }
     $ctx  = stream_context_create(['http' => [
-        'timeout'       => 10,
-        'ignore_errors' => true,
-        'header'        => "User-Agent: KutBlog/1.0\r\nAccept: application/json\r\n",
+        'timeout'         => 10,
+        'ignore_errors'   => true,
+        'follow_location' => 0,
+        'max_redirects'   => 0,
+        'header'          => "User-Agent: KutBlog/1.0\r\nAccept: application/json\r\n",
     ]]);
     $body = @file_get_contents($url, false, $ctx);
     if ($body === false || $body === '') return null;

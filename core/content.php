@@ -232,14 +232,14 @@ function get_content_index(string $type, bool $force = false): array {
         if ($index_mtime >= $dir_mtime) {
             $raw = @file_get_contents($cache_file);
             $cached = json_decode($raw, true);
-            if (is_array($cached)) {
+            if (is_array($cached) && (empty($cached) || array_key_exists('_search', $cached[0]))) {
                 $GLOBALS['__content_index_cache'][$type] = $cached;
                 return $cached;
             }
         }
     }
 
-    // Build index from disk
+    // Build slim metadata-only index from disk
     $files = glob("$dir/*.json");
     $items = [];
     if ($files) {
@@ -247,7 +247,28 @@ function get_content_index(string $type, bool $force = false): array {
             $raw = @file_get_contents($file);
             $data = json_decode($raw, true);
             if (!$data || !is_array($data)) continue;
-            $items[] = cms_sanitize_content_item($data);
+            $item = cms_sanitize_content_item($data);
+
+            $raw_excerpt = !empty($item['excerpt']) ? (string)$item['excerpt'] : (string)($item['content'] ?? '');
+            $plain_excerpt = trim((string)preg_replace('/\s+/u', ' ', strip_tags($raw_excerpt)));
+            $item['_excerpt'] = function_exists('mb_substr')
+                ? mb_substr($plain_excerpt, 0, 300, 'UTF-8')
+                : substr($plain_excerpt, 0, 300);
+
+            $plain_content = strip_tags((string)($item['content'] ?? ''));
+            $item['_word_count'] = str_word_count($plain_content);
+
+            $transcript = !empty($item['podcast_meta']['transcript']) ? (' ' . $item['podcast_meta']['transcript']) : '';
+            $search_raw = ($item['title'] ?? '') . ' ' . strip_tags((string)($item['excerpt'] ?? '')) . ' ' . $plain_content . $transcript;
+            $item['_search'] = function_exists('mb_strtolower')
+                ? mb_strtolower($search_raw, 'UTF-8')
+                : strtolower($search_raw);
+
+            unset($item['content']);
+            if (isset($item['podcast_meta']) && is_array($item['podcast_meta'])) {
+                unset($item['podcast_meta']['transcript']);
+            }
+            $items[] = $item;
         }
     }
 
@@ -363,15 +384,20 @@ function list_content(string $type, bool $published_only = false, int $page = 1,
 
 function search_content(string $query): array {
     $results = [];
-    $query_lower = strtolower(trim($query));
-    if ($query_lower === '') return [];
+    $trimmed = trim($query);
+    if ($trimmed === '') return [];
+    $query_lower = function_exists('mb_strtolower') ? mb_strtolower($trimmed, 'UTF-8') : strtolower($trimmed);
 
     foreach (['articles', 'pages'] as $type) {
-        // Search through indexed records fast
+        // Search through slim indexed records fast
         $items = get_content_index($type);
         foreach ($items as $data) {
-            $transcript = !empty($data['podcast_meta']['transcript']) ? (' ' . strtolower($data['podcast_meta']['transcript'])) : '';
-            $haystack = strtolower(($data['title'] ?? '') . ' ' . strip_tags($data['excerpt'] ?? '') . ' ' . strip_tags($data['content'] ?? '')) . $transcript;
+            $haystack = $data['_search'] ?? '';
+            if ($haystack === '') {
+                $transcript = !empty($data['podcast_meta']['transcript']) ? (' ' . $data['podcast_meta']['transcript']) : '';
+                $raw = ($data['title'] ?? '') . ' ' . strip_tags((string)($data['excerpt'] ?? '')) . ' ' . strip_tags((string)($data['content'] ?? '')) . $transcript;
+                $haystack = function_exists('mb_strtolower') ? mb_strtolower($raw, 'UTF-8') : strtolower($raw);
+            }
             if (str_contains($haystack, $query_lower)) {
                 $data['_type'] = $type;
                 if (!empty($data['podcast_meta']['is_podcast'])) {
@@ -391,6 +417,12 @@ function content_exists(string $type, string $slug): bool {
 function clear_cache(): void {
     $files = glob(CACHE_PATH . '/page_*.html');
     if ($files) foreach ($files as $f) @unlink($f);
+    foreach (['sitemap.xml', 'rss.xml'] as $xmlCache) {
+        $p = CACHE_PATH . '/' . $xmlCache;
+        if (file_exists($p)) @unlink($p);
+    }
+    $relFiles = glob(CACHE_PATH . '/kutpod_rel_*.json');
+    if ($relFiles) foreach ($relFiles as $f) @unlink($f);
     invalidate_content_index();
 }
 
@@ -403,6 +435,9 @@ function trash_path(?string $type = null): string {
 }
 
 function trash_content(string $type, string $slug): bool {
+    $slug = basename($slug);
+    if (!$slug || !preg_match('/^[a-z0-9_-]+$/i', $slug)) return false;
+
     $src = content_path($type) . "/$slug.json";
     if (!file_exists($src)) return false;
 
@@ -453,6 +488,9 @@ function restore_content(string $type, string $slug): bool {
 }
 
 function purge_content(string $type, string $slug): bool {
+    $slug = basename($slug);
+    if (!$slug || !preg_match('/^[a-z0-9_-]+$/i', $slug)) return false;
+
     $src = trash_path($type) . "/$slug.json";
     if (file_exists($src)) {
         @unlink($src);

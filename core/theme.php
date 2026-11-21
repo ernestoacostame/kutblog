@@ -140,6 +140,83 @@ function render_theme(string $template, array $vars = []): void {
         }
     }
     echo $rendered;
+
+    if (cms_is_page_cacheable()) {
+        if (!is_dir(CACHE_PATH)) {
+            @mkdir(CACHE_PATH, 0755, true);
+        }
+        $cache_file = cms_page_cache_file();
+        $tmp = @tempnam(CACHE_PATH, 'page_tmp_');
+        if ($tmp !== false) {
+            if (@file_put_contents($tmp, $rendered) !== false) {
+                @chmod($tmp, 0644);
+                if (!@rename($tmp, $cache_file)) {
+                    @unlink($tmp);
+                }
+            } else {
+                @unlink($tmp);
+            }
+        }
+    }
+}
+
+function cms_page_cache_file(): string {
+    $reqUri = $_SERVER['REQUEST_URI'] ?? '/';
+    return CACHE_PATH . '/page_' . md5($reqUri) . '.html';
+}
+
+function cms_page_cache_freshness_mtime(): int {
+    $newest = file_exists(CONFIG_FILE) ? (int)@filemtime(CONFIG_FILE) : 0;
+    $indexes = glob(CACHE_PATH . '/content_index_*.json');
+    if ($indexes) {
+        foreach ($indexes as $idxFile) {
+            $mt = (int)@filemtime($idxFile);
+            if ($mt > $newest) $newest = $mt;
+        }
+    }
+    foreach (['articles', 'pages'] as $ctype) {
+        $dir = CONTENT_PATH . '/' . $ctype;
+        if (is_dir($dir)) {
+            $mt = (int)@filemtime($dir);
+            if ($mt > $newest) $newest = $mt;
+        }
+    }
+    return $newest;
+}
+
+function cms_is_page_cacheable(): bool {
+    if (PHP_SAPI === 'cli') {
+        return false;
+    }
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+        return false;
+    }
+    if (isset($_COOKIE[session_name()]) || !empty($_COOKIE['kutblog_remember'])) {
+        return false;
+    }
+    if (isset($_GET['preview'])) {
+        return false;
+    }
+    if (http_response_code() !== 200) {
+        return false;
+    }
+
+    $reqUri = $_SERVER['REQUEST_URI'] ?? '/';
+    $uriPath = (string)(parse_url($reqUri, PHP_URL_PATH) ?? '/');
+    $basePath = (string)(parse_url(rtrim(base_url(), '/'), PHP_URL_PATH) ?? '');
+    $relPath = $basePath !== '' ? substr($uriPath, strlen($basePath)) : $uriPath;
+    $relPath = trim($relPath, '/');
+    $firstSeg = $relPath !== '' ? explode('/', $relPath)[0] : '';
+
+    $excludedExact = ['rss.xml', 'feed.xml', 'feed', 'feed/rss', 'sitemap.xml', 'robots.txt', 'favicon.ico', 'favicon.svg'];
+    if (in_array($relPath, $excludedExact, true)) {
+        return false;
+    }
+    $excludedPrefixes = ['admin', 'api', 'search', 'install', '.well-known', 'users'];
+    if (in_array($firstSeg, $excludedPrefixes, true)) {
+        return false;
+    }
+    return true;
 }
 
 function cms_current_user_can_edit_post(array $post): bool {

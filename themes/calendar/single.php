@@ -182,15 +182,20 @@ $recent_articles = function_exists('list_content') ? list_content('articles', tr
             return;
           }
           let html = '';
+          const escHtml = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+          const safeImgUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escHtml(u.trim()) : '';
           descendants.forEach(d => {
             const date = new Date(d.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day: 'numeric', month: 'short', year: 'numeric' });
+            const avatar = safeImgUrl(d.account?.avatar_static || d.account?.avatar);
+            const displayName = escHtml(d.account?.display_name || d.account?.username || '');
+            const acct = escHtml(d.account?.acct || '');
             html += `
               <div class="fediverse-comment-item">
-                <img src="${d.account.avatar_static}" alt="${d.account.display_name}" class="fedi-avatar" loading="lazy">
+                <img src="${avatar}" alt="${displayName}" class="fedi-avatar" loading="lazy">
                 <div class="fedi-content">
                   <div class="fedi-meta">
-                    <strong class="fedi-name">${d.account.display_name}</strong>
-                    <span class="fedi-handle">@${d.account.acct}</span>
+                    <strong class="fedi-name">${displayName}</strong>
+                    <span class="fedi-handle">@${acct}</span>
                     <span class="meta-dot">·</span>
                     <time class="fedi-date">${date}</time>
                   </div>

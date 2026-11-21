@@ -16,22 +16,30 @@ function series_data_file(): string {
 }
 
 /**
- * Carga los datos de series.
+ * Carga los datos de series (memoizado por petición).
  */
-function series_get_data(): array {
+function series_get_data(bool $fresh = false): array {
+    static $cache = null;
+    if (!$fresh && $cache !== null) {
+        return $cache;
+    }
     $file = series_data_file();
     if (!file_exists($file)) {
-        return ['series' => []];
+        $cache = ['series' => []];
+        return $cache;
     }
     $raw = @file_get_contents($file);
     if (!$raw) {
-        return ['series' => []];
+        $cache = ['series' => []];
+        return $cache;
     }
     $data = @json_decode($raw, true);
     if (!is_array($data) || !isset($data['series']) || !is_array($data['series'])) {
-        return ['series' => []];
+        $cache = ['series' => []];
+        return $cache;
     }
-    return $data;
+    $cache = $data;
+    return $cache;
 }
 
 /**
@@ -47,7 +55,11 @@ function series_save_data(array $data): bool {
         'series' => array_values($data['series'] ?? [])
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-    return @file_put_contents($file, $payload, LOCK_EX) !== false;
+    $ok = @file_put_contents($file, $payload, LOCK_EX) !== false;
+    if ($ok) {
+        series_get_data(true);
+    }
+    return $ok;
 }
 
 /**
@@ -309,13 +321,22 @@ function series_get_post_nav(string $postSlug): ?array {
     $prevSlug = ($idx > 0) ? $slugs[$idx - 1] : null;
     $nextSlug = ($idx < $total - 1) ? $slugs[$idx + 1] : null;
 
-    // Cargar información de los artículos
+    // Cargar información de los artículos desde el índice en memoria
+    $indexedBySlug = [];
+    if (function_exists('get_content_index')) {
+        foreach (get_content_index('articles') as $idxItem) {
+            if (!empty($idxItem['slug'])) {
+                $indexedBySlug[$idxItem['slug']] = $idxItem;
+            }
+        }
+    }
+
     $allPosts = [];
     $prevPost = null;
     $nextPost = null;
 
     foreach ($slugs as $pos => $s) {
-        $p = function_exists('get_content') ? get_content('articles', $s) : null;
+        $p = $indexedBySlug[$s] ?? (function_exists('get_content') ? get_content('articles', $s) : null);
         $item = [
             'slug'   => $s,
             'title'  => $p['title'] ?? ucfirst(str_replace('-', ' ', $s)),

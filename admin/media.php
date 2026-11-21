@@ -97,12 +97,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
         finfo_close($finfo);
 
         $allowed_media = [
-            'image/jpeg','image/png','image/gif','image/webp','image/svg+xml','image/avif',
-            'audio/mpeg','audio/mp4','audio/ogg','audio/wav','audio/webm','audio/flac',
-            'video/mp4','video/webm','video/ogg','video/quicktime',
+            'image/jpeg'      => 'jpg',
+            'image/png'       => 'png',
+            'image/gif'       => 'gif',
+            'image/webp'      => 'webp',
+            'image/svg+xml'   => 'svg',
+            'image/avif'      => 'avif',
+            'audio/mpeg'      => 'mp3',
+            'audio/mp4'       => 'm4a',
+            'audio/ogg'       => 'ogg',
+            'audio/wav'       => 'wav',
+            'audio/webm'      => 'weba',
+            'audio/flac'      => 'flac',
+            'video/mp4'       => 'mp4',
+            'video/webm'      => 'webm',
+            'video/ogg'       => 'ogv',
+            'video/quicktime' => 'mov',
         ];
 
-        if (!in_array($mime, $allowed_media)) {
+        if (!isset($allowed_media[$mime])) {
             $error = "Tipo no permitido: $mime";
         } else {
             $type = explode('/', $mime)[0];
@@ -112,24 +125,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verify_csrf($_POST['csrf'] ?? '')) 
             } else {
                 $date_dir = MEDIA_PATH . '/' . date('Y/m');
                 if (!is_dir($date_dir)) mkdir($date_dir, 0755, true);
-                $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                $clean    = trim(preg_replace('/-+/','-',preg_replace('/[^a-z0-9_-]/','-',strtolower(pathinfo($file['name'],PATHINFO_FILENAME)))),'-');
+                $ext      = $allowed_media[$mime];
+                $clean    = trim(preg_replace('/-+/','-',preg_replace('/[^a-z0-9_-]/','-',strtolower(pathinfo($file['name'],PATHINFO_FILENAME)))),'-') ?: 'file';
                 $filename = $clean . '-' . substr(md5(uniqid()),0,6) . '.' . $ext;
-                move_uploaded_file($file['tmp_name'], $date_dir . '/' . $filename);
-                
-                $rel_new = date('Y/m') . '/' . $filename;
-                
-                // If alt text was supplied upon upload
-                if (!empty($_POST['upload_alt'])) {
-                    media_save_meta($rel_new, ['alt' => $_POST['upload_alt']]);
+                $dest     = $date_dir . '/' . $filename;
+
+                $savedOk = false;
+                if ($mime === 'image/svg+xml') {
+                    $rawSvg = @file_get_contents($file['tmp_name']);
+                    $cleanSvg = $rawSvg !== false ? cms_sanitize_svg($rawSvg) : null;
+                    if (!$cleanSvg) {
+                        $error = 'SVG inválido o contiene elementos no permitidos';
+                    } else {
+                        $savedOk = @file_put_contents($dest, $cleanSvg) !== false;
+                    }
+                } else {
+                    $savedOk = move_uploaded_file($file['tmp_name'], $dest);
                 }
 
-                // If folder was selected upon upload
-                if (!empty($_POST['upload_folder']) && function_exists('mf_assign_file')) {
-                    mf_assign_file($rel_new, $_POST['upload_folder']);
-                }
+                if ($savedOk) {
+                    $rel_new = date('Y/m') . '/' . $filename;
 
-                $msg = "Subido: $filename";
+                    // If alt text was supplied upon upload
+                    if (!empty($_POST['upload_alt'])) {
+                        media_save_meta($rel_new, ['alt' => $_POST['upload_alt']]);
+                    }
+
+                    // If folder was selected upon upload
+                    if (!empty($_POST['upload_folder']) && function_exists('mf_assign_file')) {
+                        mf_assign_file($rel_new, $_POST['upload_folder']);
+                    }
+
+                    $msg = "Subido: $filename";
+                } elseif (!$error) {
+                    $error = 'No se pudo guardar el archivo';
+                }
             }
         }
     }

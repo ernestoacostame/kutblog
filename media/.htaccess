@@ -1,8 +1,7 @@
 # Allow image files, block everything else
 Options -Indexes
-<FilesMatch "\.php$">
-    Order allow,deny
-    Deny from all
+<FilesMatch "\.(php|phtml|phar|php[3-8])$">
+    Require all denied
 </FilesMatch>
 
 # ── Browser Cache Headers (Images, Audio, Video) ───────────────────────────

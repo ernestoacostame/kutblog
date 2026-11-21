@@ -135,15 +135,18 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
         div.style.marginLeft = indent + 'px';
         // Visual thread line for replies
         if (depth > 0) div.style.borderLeft = '2px solid rgba(var(--accent-rgb, 200,100,30), 0.25)';
+        const authorUrl = safeUrl(c.author.url);
+        const avatarUrl = safeImgUrl(c.author.avatar);
+        const replyUrl  = safeUrl(c.url);
         div.innerHTML = `
           <div class="mc-avatar">
-            <a href="${c.author.url}" target="_blank" rel="noopener">
-              <img src="${c.author.avatar}" alt="${escHtml(c.author.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect width=%2240%22 height=%2240%22 fill=%22%23555%22/><text x=%2220%22 y=%2226%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2218%22>${escHtml(c.author.name[0]||'?')}</text></svg>'">
+            <a href="${authorUrl}" target="_blank" rel="noopener">
+              <img src="${avatarUrl}" alt="${escHtml(c.author.name)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect width=%2240%22 height=%2240%22 fill=%22%23555%22/><text x=%2220%22 y=%2226%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2218%22>${escHtml((c.author.name||'?')[0]||'?')}</text></svg>'">
             </a>
           </div>
           <div class="mc-body">
             <div class="mc-author">
-              <a href="${c.author.url}" target="_blank" rel="noopener">${escHtml(c.author.name)}</a>
+              <a href="${authorUrl}" target="_blank" rel="noopener">${escHtml(c.author.name)}</a>
               <span class="mc-handle">@${escHtml(c.author.username)}</span>
               <time class="mc-date">${date}</time>
               ${c.favourites ? `<span class="mc-fav">⭐ ${c.favourites}</span>` : ''}
@@ -151,7 +154,7 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
             </div>
             <div class="mc-content">${c.content}</div>
             <div class="mc-reply-link">
-              <a href="${c.url}" target="_blank" rel="noopener">Responder en Mastodon →</a>
+              <a href="${replyUrl}" target="_blank" rel="noopener">Responder en Mastodon →</a>
             </div>
           </div>`;
         list.appendChild(div);
@@ -164,7 +167,13 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
     });
 
   function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function safeUrl(u) {
+    return (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escHtml(u.trim()) : '#';
+  }
+  function safeImgUrl(u) {
+    return (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escHtml(u.trim()) : '';
   }
 })();
 </script>

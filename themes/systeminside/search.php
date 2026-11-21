@@ -19,7 +19,7 @@
       <h2 style="font-family:var(--font);font-size:1.1rem;font-weight:700;margin-bottom:0.35rem">
         <a href="<?= $item_url ?>" style="color:var(--text);text-decoration:none"><?= htmlspecialchars($item['title'] ?? 'Sin título') ?></a>
       </h2>
-      <?php $exc = $item['excerpt'] ?: substr(strip_tags($item['content'] ?? ''), 0, 200); ?>
+      <?php $exc = $item['excerpt'] ?: ($item['_excerpt'] ?? substr(strip_tags($item['content'] ?? ''), 0, 200)); ?>
       <?php if ($exc): ?>
       <p style="color:var(--text2);font-size:0.875rem;line-height:1.6"><?= htmlspecialchars($exc) ?>…</p>
       <?php endif; ?>

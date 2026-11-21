@@ -28,11 +28,13 @@ $count = count($results ?? []);
       $month_short = ucfirst(month_name((int)date('n', $ts), true));
       $year = date('Y', $ts);
       $first_cat = !empty($post['categories'][0]) ? $post['categories'][0] : 'General';
-      $words = str_word_count(strip_tags($post['content'] ?? ''));
+      $words = (int)($post['_word_count'] ?? str_word_count(strip_tags($post['content'] ?? '')));
       $read_time = max(1, (int)ceil($words / 200));
 
       $excerpt = $post['excerpt'] ?? '';
-      if (!$excerpt && !empty($post['content'])) {
+      if (!$excerpt && !empty($post['_excerpt'])) {
+        $excerpt = mb_substr($post['_excerpt'], 0, 160) . '…';
+      } elseif (!$excerpt && !empty($post['content'])) {
         $excerpt = mb_substr(strip_tags($post['content']), 0, 160) . '…';
       }
     ?>

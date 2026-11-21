@@ -8,14 +8,29 @@ require_once dirname(__DIR__) . '/core/updater.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Verificar sesión admin
+// Verificar sesión admin y permisos
 if (!is_logged_in()) {
     http_response_code(403);
     echo json_encode(['error' => 'Acceso denegado. Debes iniciar sesión como administrador.']);
     exit;
 }
+require_permission('manage_settings');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// Todas las acciones excepto 'check' son mutantes: exigir POST + CSRF válido
+if ($action !== 'check') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['error' => 'Método no permitido. Se requiere POST.']);
+        exit;
+    }
+    if (!verify_csrf($_POST['csrf'] ?? '')) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Error de verificación CSRF.']);
+        exit;
+    }
+}
 
 switch ($action) {
 
@@ -122,7 +137,7 @@ switch ($action) {
     // Revertir a una versión guardada en el historial
     case 'rollback':
         set_time_limit(120);
-        $backupFile = $_POST['backup_file'] ?? $_GET['backup_file'] ?? null;
+        $backupFile = $_POST['backup_file'] ?? null;
         $result = cms_update_rollback($backupFile);
         echo json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         break;

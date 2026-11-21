@@ -16,7 +16,12 @@ function kutpod_config_file(): string {
     return CONTENT_PATH . '/kutpod_config.json';
 }
 
-function kutpod_config(): array {
+function kutpod_config(bool $fresh = false): array {
+    static $cached = null;
+    if (!$fresh && $cached !== null) {
+        return $cached;
+    }
+
     $defaults = [
         'connection_mode'        => 'local', // 'local' (SQLite) o 'remote' (API)
         'instance_url'           => 'http://localhost:8000',
@@ -46,16 +51,19 @@ function kutpod_config(): array {
         // Generar token secreto si es la primera vez
         $defaults['webhook_secret'] = bin2hex(random_bytes(16));
         kutpod_save_config($defaults);
-        return $defaults;
+        $cached = $defaults;
+        return $cached;
     }
 
-    $data = json_decode(file_get_contents($file), true) ?? [];
-    return array_merge($defaults, $data);
+    $data = json_decode((string)@file_get_contents($file), true) ?? [];
+    $cached = array_merge($defaults, $data);
+    return $cached;
 }
 
 function kutpod_save_config(array $data): void {
     $file = kutpod_config_file();
     @file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    kutpod_config(true);
 }
 
 // ── Parser Universal de URLs de KutPod ─────────────────────────────────────────
@@ -597,6 +605,7 @@ function kutpod_search_episodes_direct(array $postTags, array $postCats, array $
         JOIN podcasts p ON p.id = e.podcast_id
         WHERE e.hidden = 0 AND e.status = 'published' AND p.hidden = 0
         ORDER BY COALESCE(e.published_at, e.created_at) DESC
+        LIMIT 100
     ";
 
     // 1. Consulta directa a la base de datos SQLite si está disponible (PDO)
@@ -659,6 +668,7 @@ function kutpod_search_episodes_direct(array $postTags, array $postCats, array $
         $cacheDir = CONTENT_PATH . '/cache';
         if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
         $cacheFile = $cacheDir . '/kutpod_remote_eps.json';
+        $failFile  = $cacheDir . '/kutpod_remote_fail.flag';
 
         $cached = null;
         if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 300)) {
@@ -668,7 +678,8 @@ function kutpod_search_episodes_direct(array $postTags, array $postCats, array $
             }
         }
 
-        if (empty($episodes) && $instanceUrl) {
+        $inNegativeCache = file_exists($failFile) && (time() - filemtime($failFile) < 60);
+        if (empty($episodes) && $instanceUrl && !$inNegativeCache) {
             $urlsToTry = [
                 $instanceUrl . '/api/episodes',
                 $instanceUrl . '/episodes?json=1',
@@ -687,13 +698,19 @@ function kutpod_search_episodes_direct(array $postTags, array $postCats, array $
                     if (!empty($json['items']) && is_array($json['items'])) {
                         $episodes = $json['items'];
                         @file_put_contents($cacheFile, json_encode($episodes));
+                        if (file_exists($failFile)) @unlink($failFile);
                         break;
                     }
                 }
             }
-            if (empty($episodes) && file_exists($cacheFile)) {
-                $episodes = @json_decode(file_get_contents($cacheFile), true) ?: [];
+            if (empty($episodes)) {
+                @touch($failFile);
+                if (file_exists($cacheFile)) {
+                    $episodes = @json_decode(file_get_contents($cacheFile), true) ?: [];
+                }
             }
+        } elseif (empty($episodes) && file_exists($cacheFile)) {
+            $episodes = @json_decode(file_get_contents($cacheFile), true) ?: [];
         }
     }
 
@@ -812,6 +829,17 @@ function kutpod_search_episodes_direct(array $postTags, array $postCats, array $
  */
 function kutpod_find_related_episodes(array $post, int $limit = 4): array {
     $cfg = kutpod_config();
+    $postSlug = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string)($post['slug'] ?? ''));
+    $cacheDir = defined('CACHE_PATH') ? CACHE_PATH : (ROOT_PATH . '/cache');
+    $relCacheFile = $postSlug !== '' ? ($cacheDir . '/kutpod_rel_' . $postSlug . '.json') : '';
+
+    if ($relCacheFile !== '' && file_exists($relCacheFile) && (time() - filemtime($relCacheFile) < 3600)) {
+        $cachedRel = @json_decode((string)@file_get_contents($relCacheFile), true);
+        if (is_array($cachedRel)) {
+            return array_slice($cachedRel, 0, $limit);
+        }
+    }
+
     $postCats = array_values(array_filter(array_map('trim', array_map('strtolower', $post['categories'] ?? []))));
     $postTags = array_values(array_filter(array_map('trim', array_map('strtolower', $post['tags'] ?? []))));
     $postTitle = trim($post['title'] ?? '');
@@ -884,6 +912,13 @@ function kutpod_find_related_episodes(array $post, int $limit = 4): array {
     }
 
     usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+
+    if ($relCacheFile !== '') {
+        if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+        $toCache = array_slice($results, 0, max($limit, 10));
+        @file_put_contents($relCacheFile, json_encode($toCache, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+
     return array_slice($results, 0, $limit);
 }
 

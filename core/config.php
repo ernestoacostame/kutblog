@@ -1,6 +1,6 @@
 <?php
 // KutBlog - Configuration
-define('CMS_VERSION', '2.3.56');
+define('CMS_VERSION', '2.3.57');
 define('CMS_NAME', 'KutBlog');
 define('ROOT_PATH', dirname(__DIR__));
 define('CONTENT_PATH', ROOT_PATH . '/content');
@@ -85,16 +85,6 @@ function cms_save_logo(array $file): ?string {
 
     $ext = $allowed[$mime] ?? '';
     if (!$ext) {
-        $origExt = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        if ($origExt === 'svg') {
-            $content = @file_get_contents($file['tmp_name']);
-            if ($content && str_contains($content, '<svg') && !str_contains($content, '<?php')) {
-                $ext = 'svg';
-            }
-        }
-    }
-
-    if (!$ext) {
         return null;
     }
 
@@ -106,9 +96,18 @@ function cms_save_logo(array $file): ?string {
     $filename = 'logo_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
     $targetPath = $dir . '/' . $filename;
 
-    $moved = is_uploaded_file($file['tmp_name'])
-        ? move_uploaded_file($file['tmp_name'], $targetPath)
-        : @copy($file['tmp_name'], $targetPath);
+    if ($ext === 'svg') {
+        $rawSvg = @file_get_contents($file['tmp_name']);
+        $cleanSvg = $rawSvg !== false ? cms_sanitize_svg($rawSvg) : null;
+        if (!$cleanSvg) {
+            return null;
+        }
+        $moved = @file_put_contents($targetPath, $cleanSvg) !== false;
+    } else {
+        $moved = is_uploaded_file($file['tmp_name'])
+            ? move_uploaded_file($file['tmp_name'], $targetPath)
+            : @copy($file['tmp_name'], $targetPath);
+    }
 
     if ($moved) {
         $config = cms_config();
@@ -640,6 +639,141 @@ function __raw( string $key, $fallback = '', array $replace = [] ): string {
         }
     }
     return $text;
+}
+
+/**
+ * Sanitize an SVG document using DOMDocument:
+ * strips <script>, <foreignObject>, <iframe>, <object>, <embed>,
+ * processing instructions, on* event attributes, and dangerous href/xlink:href/style values.
+ */
+function cms_sanitize_svg(string $svgContent): ?string {
+    $svgContent = trim($svgContent);
+    if ($svgContent === '' || !class_exists('DOMDocument')) {
+        return null;
+    }
+
+    $prev = libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    $loaded = $dom->loadXML($svgContent, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+
+    if (!$loaded || !$dom->documentElement) {
+        return null;
+    }
+
+    if (strtolower($dom->documentElement->localName ?? '') !== 'svg') {
+        return null;
+    }
+
+    $blockedTags = ['script', 'foreignobject', 'iframe', 'object', 'embed'];
+    $toRemove = [];
+
+    $walk = function (DOMNode $node) use (&$walk, &$toRemove, $blockedTags): void {
+        if ($node->nodeType === XML_PI_NODE) {
+            $toRemove[] = $node;
+            return;
+        }
+        if ($node instanceof DOMElement) {
+            $tag = strtolower($node->localName ?? $node->nodeName);
+            if (in_array($tag, $blockedTags, true)) {
+                $toRemove[] = $node;
+                return;
+            }
+            if ($node->hasAttributes()) {
+                $attrNames = [];
+                foreach ($node->attributes as $attr) {
+                    $attrNames[] = $attr->nodeName;
+                }
+                foreach ($attrNames as $name) {
+                    $lower = strtolower($name);
+                    $local = strtolower(str_contains($name, ':') ? explode(':', $name, 2)[1] : $name);
+                    $val   = $node->getAttribute($name);
+                    $norm  = preg_replace('/[\x00-\x20]+/', '', $val);
+
+                    if (str_starts_with($lower, 'on')) {
+                        $node->removeAttribute($name);
+                        continue;
+                    }
+                    if (in_array($local, ['href', 'src', 'action', 'formaction'], true)) {
+                        if (preg_match('/^(?:javascript|vbscript|data:(?!image\/(?:png|jpeg|gif|webp);))/i', $norm)) {
+                            $node->removeAttribute($name);
+                            continue;
+                        }
+                    }
+                    if ($lower === 'style' && preg_match('/(?:javascript:|vbscript:|expression\s*\()/i', $norm)) {
+                        $node->removeAttribute($name);
+                        continue;
+                    }
+                }
+            }
+        }
+        if ($node->hasChildNodes()) {
+            foreach ($node->childNodes as $child) {
+                $walk($child);
+            }
+        }
+    };
+
+    $walk($dom->documentElement);
+    foreach ($toRemove as $node) {
+        if ($node->parentNode) {
+            $node->parentNode->removeChild($node);
+        }
+    }
+
+    $clean = $dom->saveXML($dom->documentElement);
+    return $clean !== false ? $clean : null;
+}
+
+/**
+ * Validate a remote URL against SSRF (allows only http/https and public IPs).
+ */
+function cms_is_safe_remote_url(string $url): bool {
+    $parts = parse_url(trim($url));
+    if (!is_array($parts)) {
+        return false;
+    }
+    $scheme = strtolower($parts['scheme'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return false;
+    }
+    $host = trim($parts['host'] ?? '', '[]');
+    if ($host === '') {
+        return false;
+    }
+
+    $flags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        return filter_var($host, FILTER_VALIDATE_IP, $flags) !== false;
+    }
+
+    $ips = [];
+    if (function_exists('dns_get_record')) {
+        $records = @dns_get_record($host, DNS_A | DNS_AAAA);
+        if (is_array($records)) {
+            foreach ($records as $rec) {
+                if (!empty($rec['ip'])) $ips[] = $rec['ip'];
+                if (!empty($rec['ipv6'])) $ips[] = $rec['ipv6'];
+            }
+        }
+    }
+    if (empty($ips) && function_exists('gethostbynamel')) {
+        $v4 = @gethostbynamel($host);
+        if (is_array($v4)) {
+            $ips = $v4;
+        }
+    }
+    if (empty($ips)) {
+        return false;
+    }
+
+    foreach ($ips as $ip) {
+        if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function cms_plugin_is_active(string $id): bool {

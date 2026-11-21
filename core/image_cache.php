@@ -161,11 +161,13 @@ function image_cache_serve(string $src, int $width = 0, int $height = 0, int $qu
     $ext = strtolower(pathinfo($real_path, PATHINFO_EXTENSION));
     $mtime = filemtime($real_path);
 
-    // SVGs are vector: stream directly with 1-year cache
+    // SVGs are vector: stream directly with 1-year cache and sandbox CSP
     if ($ext === 'svg') {
         $etag = '"svg-' . md5($real_path . '_' . $mtime) . '"';
         image_cache_check_client_cache($mtime, $etag);
         header('Content-Type: image/svg+xml');
+        header('Content-Security-Policy: sandbox');
+        header('X-Content-Type-Options: nosniff');
         header('Cache-Control: public, max-age=31536000, immutable');
         header('ETag: ' . $etag);
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $mtime) . ' GMT');
@@ -175,6 +177,17 @@ function image_cache_serve(string $src, int $width = 0, int $height = 0, int $qu
     }
 
     $width   = max(0, min(3840, $width));
+    if ($width > 0) {
+        $allowed_widths = [320, 480, 640, 800, 960, 1280, 1600, 1920];
+        $snapped = 1920;
+        foreach ($allowed_widths as $aw) {
+            if ($width <= $aw) {
+                $snapped = $aw;
+                break;
+            }
+        }
+        $width = $snapped;
+    }
     $height  = max(0, min(2160, $height));
     $quality = max(30, min(100, $quality ?: 82));
 
@@ -193,41 +206,66 @@ function image_cache_serve(string $src, int $width = 0, int $height = 0, int $qu
 
     // Generate cached image if missing or outdated
     if (!file_exists($cache_file) || filesize($cache_file) === 0) {
-        $ok = false;
-
-        // Resize / optimize using driver
-        if ($driver === 'graphicsmagick') {
-            $cmd = 'gm convert ' . escapeshellarg($real_path) . ' -auto-orient ';
-            if ($width > 0 && $height > 0) {
-                $cmd .= '-resize ' . escapeshellarg("{$width}x{$height}^") . ' -gravity center -extent ' . escapeshellarg("{$width}x{$height}") . ' ';
-            } elseif ($width > 0) {
-                $cmd .= '-resize ' . escapeshellarg((string)$width) . ' ';
-            } elseif ($height > 0) {
-                $cmd .= '-resize ' . escapeshellarg("x{$height}") . ' ';
-            }
-            $cmd .= '+profile "*" -quality ' . (int)$quality . ' ' . escapeshellarg($cache_file) . ' 2>&1';
-            exec($cmd, $out, $ret);
-            $ok = ($ret === 0 && file_exists($cache_file) && filesize($cache_file) > 0);
-        } elseif ($driver === 'imagemagick') {
-            $cmd = 'convert ' . escapeshellarg($real_path) . ' -auto-orient ';
-            if ($width > 0 && $height > 0) {
-                $cmd .= '-resize ' . escapeshellarg("{$width}x{$height}^") . ' -gravity center -extent ' . escapeshellarg("{$width}x{$height}") . ' ';
-            } elseif ($width > 0) {
-                $cmd .= '-resize ' . escapeshellarg((string)$width) . ' ';
-            } elseif ($height > 0) {
-                $cmd .= '-resize ' . escapeshellarg("x{$height}") . ' ';
-            }
-            $cmd .= '-strip -quality ' . (int)$quality . ' ' . escapeshellarg($cache_file) . ' 2>&1';
-            exec($cmd, $out, $ret);
-            $ok = ($ret === 0 && file_exists($cache_file) && filesize($cache_file) > 0);
-        } elseif ($driver === 'gd' && function_exists('imagecreatefromstring')) {
-            $ok = image_cache_resize_gd($real_path, $cache_file, $width, $height, $quality, $target_ext);
+        $lock_file = $cache_file . '.lock';
+        $lock_fp = @fopen($lock_file, 'c');
+        if ($lock_fp) {
+            @flock($lock_fp, LOCK_EX);
         }
 
-        // Fallback: copy original if conversion not feasible
-        if (!$ok) {
-            @copy($real_path, $cache_file);
-            $target_ext = $ext;
+        if (!file_exists($cache_file) || filesize($cache_file) === 0) {
+            $ok = false;
+            $tmp_file = $cache_dir . '/' . $cache_key . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp.' . $target_ext;
+
+            // Resize / optimize using driver
+            if ($driver === 'graphicsmagick') {
+                $cmd = 'gm convert ' . escapeshellarg($real_path) . ' -auto-orient ';
+                if ($width > 0 && $height > 0) {
+                    $cmd .= '-resize ' . escapeshellarg("{$width}x{$height}^") . ' -gravity center -extent ' . escapeshellarg("{$width}x{$height}") . ' ';
+                } elseif ($width > 0) {
+                    $cmd .= '-resize ' . escapeshellarg((string)$width) . ' ';
+                } elseif ($height > 0) {
+                    $cmd .= '-resize ' . escapeshellarg("x{$height}") . ' ';
+                }
+                $cmd .= '+profile "*" -quality ' . (int)$quality . ' ' . escapeshellarg($tmp_file) . ' 2>&1';
+                exec($cmd, $out, $ret);
+                $ok = ($ret === 0 && file_exists($tmp_file) && filesize($tmp_file) > 0);
+            } elseif ($driver === 'imagemagick') {
+                $cmd = 'convert ' . escapeshellarg($real_path) . ' -auto-orient ';
+                if ($width > 0 && $height > 0) {
+                    $cmd .= '-resize ' . escapeshellarg("{$width}x{$height}^") . ' -gravity center -extent ' . escapeshellarg("{$width}x{$height}") . ' ';
+                } elseif ($width > 0) {
+                    $cmd .= '-resize ' . escapeshellarg((string)$width) . ' ';
+                } elseif ($height > 0) {
+                    $cmd .= '-resize ' . escapeshellarg("x{$height}") . ' ';
+                }
+                $cmd .= '-strip -quality ' . (int)$quality . ' ' . escapeshellarg($tmp_file) . ' 2>&1';
+                exec($cmd, $out, $ret);
+                $ok = ($ret === 0 && file_exists($tmp_file) && filesize($tmp_file) > 0);
+            } elseif ($driver === 'gd' && function_exists('imagecreatefromstring')) {
+                $ok = image_cache_resize_gd($real_path, $tmp_file, $width, $height, $quality, $target_ext);
+            }
+
+            if ($ok && file_exists($tmp_file) && filesize($tmp_file) > 0) {
+                @chmod($tmp_file, 0644);
+                if (!@rename($tmp_file, $cache_file)) {
+                    @unlink($tmp_file);
+                }
+            } else {
+                @unlink($tmp_file);
+                // Fallback: copy original if conversion not feasible
+                if (@copy($real_path, $tmp_file)) {
+                    @chmod($tmp_file, 0644);
+                    if (!@rename($tmp_file, $cache_file)) {
+                        @unlink($tmp_file);
+                    }
+                }
+                $target_ext = $ext;
+            }
+        }
+
+        if ($lock_fp) {
+            @flock($lock_fp, LOCK_UN);
+            @fclose($lock_fp);
         }
     }
 

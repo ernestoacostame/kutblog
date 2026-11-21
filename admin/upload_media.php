@@ -29,24 +29,24 @@ finfo_close($finfo);
 
 $allowed = [
     // Images
-    'image/jpeg'      => ['jpg','jpeg'],
-    'image/png'       => ['png'],
-    'image/gif'       => ['gif'],
-    'image/webp'      => ['webp'],
-    'image/svg+xml'   => ['svg'],
-    'image/avif'      => ['avif'],
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+    'image/gif'       => 'gif',
+    'image/webp'      => 'webp',
+    'image/svg+xml'   => 'svg',
+    'image/avif'      => 'avif',
     // Audio
-    'audio/mpeg'      => ['mp3'],
-    'audio/mp4'       => ['m4a','mp4'],
-    'audio/ogg'       => ['ogg','oga'],
-    'audio/wav'       => ['wav'],
-    'audio/webm'      => ['weba'],
-    'audio/flac'      => ['flac'],
+    'audio/mpeg'      => 'mp3',
+    'audio/mp4'       => 'm4a',
+    'audio/ogg'       => 'ogg',
+    'audio/wav'       => 'wav',
+    'audio/webm'      => 'weba',
+    'audio/flac'      => 'flac',
     // Video
-    'video/mp4'       => ['mp4','m4v'],
-    'video/webm'      => ['webm'],
-    'video/ogg'       => ['ogv'],
-    'video/quicktime' => ['mov'],
+    'video/mp4'       => 'mp4',
+    'video/webm'      => 'webm',
+    'video/ogg'       => 'ogv',
+    'video/quicktime' => 'mov',
 ];
 
 if (!isset($allowed[$real_mime])) {
@@ -54,7 +54,7 @@ if (!isset($allowed[$real_mime])) {
 }
 
 // Size limits: 10 MB images, 200 MB audio, 2 GB video
-$ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+$ext  = $allowed[$real_mime];
 $type = explode('/', $real_mime)[0]; // 'image', 'audio', 'video'
 
 $max_sizes = ['image' => 10, 'audio' => 200, 'video' => 2048]; // MB
@@ -74,7 +74,16 @@ $clean    = trim(preg_replace('/-+/', '-', $clean), '-') ?: 'file';
 $filename = $clean . '-' . substr(uniqid(), -6) . '.' . $ext;
 $dest     = $date_dir . '/' . $filename;
 
-if (!move_uploaded_file($file['tmp_name'], $dest)) {
+if ($real_mime === 'image/svg+xml') {
+    $rawSvg = @file_get_contents($file['tmp_name']);
+    $cleanSvg = $rawSvg !== false ? cms_sanitize_svg($rawSvg) : null;
+    if (!$cleanSvg) {
+        echo json_encode(['error' => 'SVG inválido o contiene elementos no permitidos']); exit;
+    }
+    if (@file_put_contents($dest, $cleanSvg) === false) {
+        echo json_encode(['error' => 'No se pudo guardar el archivo. Verifica los permisos de /media/']); exit;
+    }
+} elseif (!move_uploaded_file($file['tmp_name'], $dest)) {
     echo json_encode(['error' => 'No se pudo guardar el archivo. Verifica los permisos de /media/']); exit;
 }
 

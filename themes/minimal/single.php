@@ -133,6 +133,10 @@ $read_time = max(1, (int)ceil($words / 200));
           return;
         }
 
+        const escHtml = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escHtml(u.trim()) : '#';
+        const safeImgUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escHtml(u.trim()) : '';
+
         data.comments.forEach(c => {
           const date   = new Date(c.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day:'numeric', month:'short', year:'numeric' });
           const depth  = Math.min(c.depth || 0, 4);
@@ -143,16 +147,20 @@ $read_time = max(1, (int)ceil($words / 200));
             div.style.marginLeft = indent + 'px';
             div.style.borderLeft = '3px solid var(--accent)';
           }
+          const authorUrl = safeUrl(c.author?.url);
+          const avatarUrl = safeImgUrl(c.author?.avatar);
+          const displayName = escHtml(c.author?.display_name || c.author?.name || '');
+          const acct = escHtml(c.author?.acct || c.author?.username || '');
           div.innerHTML = `
             <div class="mc-author">
               <div class="mc-avatar">
-                <a href="${c.author.url}" target="_blank" rel="noopener">
-                  <img src="${c.author.avatar}" alt="${c.author.display_name}" width="36" height="36" style="border-radius:50%">
+                <a href="${authorUrl}" target="_blank" rel="noopener">
+                  <img src="${avatarUrl}" alt="${displayName}" width="36" height="36" style="border-radius:50%">
                 </a>
               </div>
               <div class="mc-author-info">
-                <strong><a href="${c.author.url}" target="_blank" rel="noopener" style="color:var(--text)">${c.author.display_name}</a></strong>
-                <span>@${c.author.acct} · ${date}</span>
+                <strong><a href="${authorUrl}" target="_blank" rel="noopener" style="color:var(--text)">${displayName}</a></strong>
+                <span>@${acct} · ${date}</span>
               </div>
             </div>
             <div class="mc-body">${c.content}</div>

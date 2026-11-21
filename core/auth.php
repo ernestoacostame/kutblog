@@ -120,6 +120,10 @@ function login(string $username, string $password, bool $remember = false): bool
     }
 
     // Direct login without 2FA
+    if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+        @session_regenerate_id(true);
+        $_SESSION['last_regen'] = time();
+    }
     $_SESSION['logged_in']     = true;
     $_SESSION['username']      = $user['username'];
     $_SESSION['user_role']     = $user['role'] ?? 'admin';
@@ -168,6 +172,10 @@ function login_verify_2fa(string $code, ?bool $remember = null): bool {
     }
 
     if ($valid) {
+        if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+            @session_regenerate_id(true);
+            $_SESSION['last_regen'] = time();
+        }
         $_SESSION['logged_in']     = true;
         $_SESSION['username']      = $user['username'];
         $_SESSION['user_role']     = $user['role'] ?? 'admin';

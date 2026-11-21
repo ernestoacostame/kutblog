@@ -156,11 +156,11 @@ $read_time = max(1, (int)ceil($words / 200));
         }
 
         list.innerHTML = replies.map(r => {
-          const author = r.account;
-          const authorName = escapeHtml(author.display_name || author.username);
-          const authorUrl = escapeHtml(author.url);
-          const avatar = escapeHtml(author.avatar_static || author.avatar);
-          const handle = escapeHtml(`@${author.acct}`);
+          const author = r.account || {};
+          const authorName = escapeHtml(author.display_name || author.username || '');
+          const authorUrl = safeUrl(author.url);
+          const avatar = safeImgUrl(author.avatar_static || author.avatar);
+          const handle = escapeHtml(`@${author.acct || ''}`);
           const date = new Date(r.created_at).toLocaleDateString(<?= json_encode(site_lang() === 'es' ? 'es-ES' : 'en-US') ?>, { day: 'numeric', month: 'short', year: 'numeric' });
           const content = r.content;
 
@@ -192,8 +192,14 @@ $read_time = max(1, (int)ceil($words / 200));
 
     function escapeHtml(str) {
       const d = document.createElement('div');
-      d.textContent = str;
+      d.textContent = str ?? '';
       return d.innerHTML;
+    }
+    function safeUrl(u) {
+      return (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escapeHtml(u.trim()) : '#';
+    }
+    function safeImgUrl(u) {
+      return (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) ? escapeHtml(u.trim()) : '';
     }
   })();
   </script>

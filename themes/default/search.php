@@ -27,7 +27,7 @@
     <h2 style="font-family:var(--font-heading);font-size:1.15rem;font-weight:600;margin-bottom:0.4rem">
       <a href="<?= $item_url ?>" style="color:var(--text);text-decoration:none"><?= htmlspecialchars($item['title'] ?? 'Untitled') ?></a>
     </h2>
-    <?php $excerpt = $item['excerpt'] ?: substr(strip_tags($item['content'] ?? ''), 0, 200); ?>
+    <?php $excerpt = $item['excerpt'] ?: ($item['_excerpt'] ?? substr(strip_tags($item['content'] ?? ''), 0, 200)); ?>
     <?php if ($excerpt): ?>
     <p style="color:var(--text2);font-size:0.9rem;line-height:1.6"><?= htmlspecialchars($excerpt) ?>…</p>
     <?php endif; ?>

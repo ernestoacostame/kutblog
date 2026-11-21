@@ -28,7 +28,7 @@ $total_pages  = $posts['pages'] ?? 1;
     $post_url = $base . '/article/' . htmlspecialchars($post['slug']);
     $first_cat = !empty($post['categories'][0]) ? $post['categories'][0] : 'General';
     $has_image = !empty($post['featured_image']);
-    $words = str_word_count(strip_tags($post['content'] ?? ''));
+    $words = (int)($post['_word_count'] ?? str_word_count(strip_tags($post['content'] ?? '')));
     $read_time = max(1, (int)ceil($words / 200));
     $has_podcast = !empty($post['podcast_meta']['audio_url']) || !empty($post['podcast_audio']);
   ?>
@@ -71,7 +71,9 @@ $total_pages  = $posts['pages'] ?? 1;
 
       <?php
       $excerpt = $post['excerpt'] ?? '';
-      if (!$excerpt && !empty($post['content'])) {
+      if (!$excerpt && !empty($post['_excerpt'])) {
+          $excerpt = mb_substr($post['_excerpt'], 0, 130) . '…';
+      } elseif (!$excerpt && !empty($post['content'])) {
           $excerpt = mb_substr(strip_tags($post['content']), 0, 130) . '…';
       }
       ?>
