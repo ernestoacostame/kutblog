@@ -14,7 +14,9 @@ if (!empty($_SESSION['2fa_pending_user'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (is_rate_limited()) {
+    if (!verify_csrf($_POST['csrf'] ?? '')) {
+        $error = __("login_csrf_error", "Error de seguridad (CSRF). Recarga la página e inténtalo de nuevo.");
+    } elseif (is_rate_limited()) {
         $error = __("login_rate_limited", "Demasiados intentos fallidos. Inténtalo de nuevo en 15 minutos.");
     } else {
         $action = $_POST['action'] ?? 'login';

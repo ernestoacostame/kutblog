@@ -339,12 +339,12 @@ function cms_save_favicon(array $file): ?string {
     $hash = substr(md5(uniqid()), 0, 8);
 
     if ($ext === 'svg') {
+        $rawSvg = @file_get_contents($file['tmp_name']);
+        if (!$rawSvg) return null;
+        $cleanSvg = function_exists('cms_sanitize_svg') ? cms_sanitize_svg($rawSvg) : $rawSvg;
         $filename = 'favicon_' . $hash . '.svg';
         $targetPath = $dir . '/' . $filename;
-        $moved = is_uploaded_file($file['tmp_name'])
-            ? move_uploaded_file($file['tmp_name'], $targetPath)
-            : @copy($file['tmp_name'], $targetPath);
-        if (!$moved) return null;
+        if (@file_put_contents($targetPath, $cleanSvg) === false) return null;
 
         // Try to generate a 128x128 PNG counterpart and ICO counterpart
         $pngPath = $dir . '/favicon_' . $hash . '.png';

@@ -165,6 +165,7 @@ function save_content(string $type, array $data): string {
 }
 
 function get_content(string $type, string $slug): ?array {
+    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) return null;
     $file = content_path($type) . "/$slug.json";
     if (!file_exists($file)) return null;
     $data = json_decode(file_get_contents($file), true);

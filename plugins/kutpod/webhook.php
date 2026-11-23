@@ -23,8 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// 2. Validar Token Secreto
+// 2. Validar Token Secreto (fail-closed si no está configurado)
 $configuredToken = trim($cfg['webhook_secret'] ?? '');
+if ($configuredToken === '') {
+    http_response_code(403);
+    echo json_encode(['error' => 'Webhook secret is not configured.']);
+    exit;
+}
 if ($configuredToken !== '') {
     $incomingToken = '';
     

@@ -27,8 +27,9 @@ function media_normalize_rel(string $path_or_url): string {
     }
     
     // Clean directory traversals
-    $path = ltrim(str_replace(['../', '..\\', '//'], '', $path), '/');
-    return $path;
+    $segs = explode('/', $path);
+    $clean = array_filter($segs, fn($s) => $s !== '' && $s !== '.' && $s !== '..');
+    return implode('/', $clean);
 }
 
 /**

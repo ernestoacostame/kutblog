@@ -393,8 +393,9 @@ function ap_endpoint_inbox(string $username): void {
 
     ap_log("Inbox: Recibida actividad del tipo: " . $a['type'] . " de: " . ($a['actor'] ?? 'desconocido'));
 
-    // Verify signature
-    if (!ap_verify_signature($raw)) {
+    // Verify signature and actor ownership
+    $verifiedActor = ap_verify_signature($raw);
+    if (!$verifiedActor || !is_string($verifiedActor)) {
         // Safe delete cleanups for missing actors
         if ($a['type'] === 'Delete') {
             $actorUrl = $a['actor'] ?? '';
@@ -409,7 +410,11 @@ function ap_endpoint_inbox(string $username): void {
         exit('Firma no válida');
     }
 
-    $actor = $a['actor'];
+    $actor = $a['actor'] ?? '';
+    if ($actor !== $verifiedActor) {
+        http_response_code(403);
+        exit('Actor no coincide con la clave firmante');
+    }
 
     switch ($a['type']) {
         case 'Follow':
@@ -809,8 +814,26 @@ function ap_verify_signature(string $body): bool {
         ap_log("Firma fallida: openssl_verify devolvió $ok.");
         return false;
     }
-    
-    return true;
+
+    $digestHeader = $_SERVER['HTTP_DIGEST'] ?? '';
+    if ($digestHeader !== '') {
+        $expectedDigest = 'SHA-256=' . base64_encode(hash('sha256', $rawBody, true));
+        if (!hash_equals($expectedDigest, trim($digestHeader))) {
+            ap_log("Firma fallida: Digest no coincide.");
+            return false;
+        }
+    }
+
+    $dateHeader = $_SERVER['HTTP_DATE'] ?? '';
+    if ($dateHeader !== '') {
+        $ts = strtotime($dateHeader);
+        if ($ts === false || abs(time() - $ts) > 300) {
+            ap_log("Firma fallida: Date expirado o inválido.");
+            return false;
+        }
+    }
+
+    return $actor['id'] ?? $actorUrl;
 }
 
 function ap_sanitize_comment_html(string $html): string {
@@ -920,12 +943,15 @@ function ap_resolve_webfinger(string $acct): ?array {
     if (count($parts) !== 2) return null;
     $host = $parts[1];
     $url = "https://$host/.well-known/webfinger?resource=acct:$acct";
+    if (function_exists('cms_is_safe_remote_url') && !cms_is_safe_remote_url($url)) return null;
     
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => ['Accept: application/jrd+json, application/json'],
         CURLOPT_USERAGENT => 'KutBlog/1.0 (+' . ap_base_url() . ')',
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
         CURLOPT_TIMEOUT => 10,
     ]);
     $r = curl_exec($ch);

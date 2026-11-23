@@ -54,7 +54,7 @@ if ($xml === null || $xml === false || $xml === '') {
       <guid isPermaLink="true"><?= htmlspecialchars($url) ?></guid>
       <pubDate><?= $pubdate ?></pubDate>
       <description><?= htmlspecialchars($excerpt) ?></description>
-      <content:encoded><![CDATA[<?= $full['content'] ?? '' ?>]]></content:encoded>
+      <content:encoded><![CDATA[<?= str_replace(']]>', ']]]]><![CDATA[>', $full['content'] ?? '') ?>]]></content:encoded>
       <?php foreach ($cats as $cat): ?>
       <category><?= htmlspecialchars($cat) ?></category>
       <?php endforeach; ?>

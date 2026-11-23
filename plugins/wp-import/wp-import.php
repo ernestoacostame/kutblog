@@ -17,6 +17,11 @@ if (!is_dir(MEDIA_PATH)) {
  * Downloads an image referenced in WordPress export or post and saves it into /media/.
  */
 function wp_download_image(string $src_url, string $base_url, array &$log): string {
+    if (function_exists('cms_is_safe_remote_url') && !cms_is_safe_remote_url($src_url)) {
+        $log[] = "  ⚠ URL bloqueada por seguridad: $src_url";
+        return $src_url;
+    }
+
     // Extract path preserving WP structure e.g. /wp-content/uploads/2025/02/img.jpg
     $parsed   = parse_url($src_url);
     $url_path = $parsed['path'] ?? '';
@@ -28,9 +33,10 @@ function wp_download_image(string $src_url, string $base_url, array &$log): stri
         $rel_path = ltrim($url_path, '/');
     }
 
-    // Sanitize each path segment
-    $parts     = explode('/', $rel_path);
-    $parts     = array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._\-]/', '-', $p), $parts);
+    // Sanitize each path segment and strip traversal segments
+    $parts     = explode('/', str_replace('\\', '/', $rel_path));
+    $parts     = array_values(array_filter(array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._\-]/', '-', $p), $parts), fn($p) => $p !== '' && $p !== '.' && $p !== '..'));
+    if (empty($parts)) return $src_url;
     $rel_path  = implode('/', $parts);
 
     $media_path = defined('MEDIA_PATH') ? MEDIA_PATH : ROOT_PATH . '/media';
@@ -43,11 +49,16 @@ function wp_download_image(string $src_url, string $base_url, array &$log): stri
 
     // Create directory structure
     if (!is_dir($dest_dir)) mkdir($dest_dir, 0755, true);
+    $realMedia = realpath($media_path);
+    $realDestDir = realpath($dest_dir);
+    if (!$realMedia || !$realDestDir || ($realDestDir !== $realMedia && !str_starts_with($realDestDir, $realMedia . DIRECTORY_SEPARATOR))) {
+        return $src_url;
+    }
 
-    // Download with timeout
+    // Download with timeout (no auto-redirects for SSRF safety)
     $ctx  = stream_context_create(['http' => [
         'timeout'          => 20,
-        'follow_location'  => true,
+        'follow_location'  => false,
         'ignore_errors'    => true,
         'header'           => "User-Agent: KutBlog/1.0 (compatible)\r\n",
     ]]);
@@ -56,6 +67,18 @@ function wp_download_image(string $src_url, string $base_url, array &$log): stri
     if ($data === false || strlen($data) < 100) {
         $log[] = "  ⚠ No se pudo descargar: $src_url";
         return $src_url; // leave original URL on failure
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = $finfo ? finfo_buffer($finfo, $data) : '';
+    if ($finfo) finfo_close($finfo);
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
+    if (!in_array($mime, $allowedMimes, true)) {
+        $log[] = "  ⚠ Tipo de archivo no permitido ($mime): $src_url";
+        return $src_url;
+    }
+    if ($mime === 'image/svg+xml' && function_exists('cms_sanitize_svg')) {
+        $data = cms_sanitize_svg($data);
     }
 
     file_put_contents($dest_file, $data);
@@ -224,6 +247,7 @@ function import_wordpress_xml(string $xml_content, bool $download_images = true)
  */
 function wp_import_download_image(string $url): ?string {
     if (!preg_match('#^https?://#i', $url)) return null;
+    if (function_exists('cms_is_safe_remote_url') && !cms_is_safe_remote_url($url)) return null;
 
     $parsed   = parse_url($url);
     $url_path = $parsed['path'] ?? '';
@@ -234,8 +258,9 @@ function wp_import_download_image(string $url): ?string {
         $rel_path = ltrim($url_path, '/');
     }
 
-    $parts    = explode('/', $rel_path);
-    $parts    = array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._\-]/', '-', $p), $parts);
+    $parts    = explode('/', str_replace('\\', '/', $rel_path));
+    $parts    = array_values(array_filter(array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._\-]/', '-', $p), $parts), fn($p) => $p !== '' && $p !== '.' && $p !== '..'));
+    if (empty($parts)) return null;
     $rel_path = implode('/', $parts);
 
     $media_path = defined('MEDIA_PATH') ? MEDIA_PATH : ROOT_PATH . '/media';
@@ -244,14 +269,28 @@ function wp_import_download_image(string $url): ?string {
 
     if (file_exists($dest_file)) return $rel_path;
     if (!is_dir($dest_dir)) mkdir($dest_dir, 0755, true);
+    $realMedia = realpath($media_path);
+    $realDestDir = realpath($dest_dir);
+    if (!$realMedia || !$realDestDir || ($realDestDir !== $realMedia && !str_starts_with($realDestDir, $realMedia . DIRECTORY_SEPARATOR))) {
+        return null;
+    }
 
     $ctx  = stream_context_create(['http' => [
         'timeout'         => 15,
-        'follow_location' => true,
+        'follow_location' => false,
         'header'          => "User-Agent: KutBlog/1.0\r\n",
     ]]);
     $data = @file_get_contents($url, false, $ctx);
     if ($data === false || strlen($data) < 100) return null;
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = $finfo ? finfo_buffer($finfo, $data) : '';
+    if ($finfo) finfo_close($finfo);
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml'];
+    if (!in_array($mime, $allowedMimes, true)) return null;
+    if ($mime === 'image/svg+xml' && function_exists('cms_sanitize_svg')) {
+        $data = cms_sanitize_svg($data);
+    }
 
     file_put_contents($dest_file, $data);
     return $rel_path;

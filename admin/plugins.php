@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/core/auth.php';
 require_once dirname(__DIR__) . '/core/theme.php';
 require_once __DIR__ . '/layout.php';
 require_login();
+require_permission('manage_plugins');
 
 $pluginsDir = dirname(__DIR__) . '/plugins';
 if (!is_dir($pluginsDir)) {
@@ -46,7 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $active = $config['active_plugins'] ?? [];
 
         if ($action === 'activate') {
-            if (!in_array($plugin_id, $active)) {
+            $avail = get_available_plugins();
+            if (!isset($avail[$plugin_id])) {
+                $error = 'Plugin no válido.';
+            } elseif (!in_array($plugin_id, $active, true)) {
                 $active[] = $plugin_id;
                 $config['active_plugins'] = array_values($active);
                 cms_save_config($config);
