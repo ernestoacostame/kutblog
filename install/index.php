@@ -94,8 +94,7 @@ $detected_base = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVE
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Install KutBlog</title>
 <link rel="icon" type="image/svg+xml" href="../media/favicon/default.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="/assets/fonts.css" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {

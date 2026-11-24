@@ -30,9 +30,7 @@ function render_notice_page(string $title, string $icon, string $message, string
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= htmlspecialchars($title) ?> · <?= $siteTitle ?></title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital,wght@0,400;0,600;1,400&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="/assets/fonts.css" rel="stylesheet">
   <style>
     :root {
       --bg: #09090b;

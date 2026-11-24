@@ -44,9 +44,7 @@ function admin_header(string $page_title = '', string $active = ''): void {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $page_title_plain ? htmlspecialchars($page_title_plain) . ' — ' : '' ?>Admin · <?= htmlspecialchars($title) ?></title>
 <?= cms_favicon_tags() ?>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="/assets/fonts.css" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {

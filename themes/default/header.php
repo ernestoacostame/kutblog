@@ -29,8 +29,7 @@ if ($mastodon_url): ?>
 <?php if ($mastodon_handle): ?>
 <meta name="fediverse:creator" content="<?= htmlspecialchars($mastodon_handle) ?>">
 <?php endif; ?>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,700;1,400&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link href="/assets/fonts.css" rel="stylesheet">
 <style>
 <?= get_theme_css_vars() ?>
 
