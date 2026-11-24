@@ -213,7 +213,7 @@ admin_header('Estadísticas', 'analytics');
               ?>
               <tr>
                 <td>
-                  <div style="display:flex; align-items:center; gap:0.4rem; max-width:300px;">
+                  <div style="display:flex; align-items:center; gap:0.4rem; max-width:440px;">
                     <span class="badge" style="background:var(--bg3); border:1px solid var(--border); color:var(--muted); font-size:0.65rem; flex-shrink:0;"><?= htmlspecialchars($info['kind']) ?></span>
                     <a href="<?= htmlspecialchars($publicHref) ?>" target="_blank" rel="noopener" style="font-weight:600; color:var(--text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="<?= htmlspecialchars($info['title']) ?>">
                       <?= htmlspecialchars($info['title']) ?> ↗
@@ -359,7 +359,7 @@ admin_header('Estadísticas', 'analytics');
                   <?= date('Y-m-d H:i', (int)$rv['ts']) ?>
                 </td>
                 <td>
-                  <div style="font-weight:600; color:var(--text); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <div style="font-weight:600; color:var(--text); max-width:440px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                     <?= htmlspecialchars($rvInfo['title']) ?>
                   </div>
                   <div style="font-size:0.7rem; color:var(--muted); font-family:var(--font-mono);">

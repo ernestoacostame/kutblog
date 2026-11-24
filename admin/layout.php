@@ -252,7 +252,7 @@ body.sidebar-open .sidebar { transform: translateX(0) !important; }
 .scheme-dot.active { border-color: var(--text); }
 
 /* ── MAIN CONTENT ── */
-.page-body { padding: 1.75rem 2rem; flex: 1; }
+.page-body { padding: 1.75rem 2rem; flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; }
 
 /* ── COMPONENTS (quireINK relief grammar) ── */
 .btn {
