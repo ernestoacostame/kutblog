@@ -213,7 +213,7 @@ function analytics_record_scroll(string $path, string $ip, string $ua, int $dept
 /**
  * Fetch and aggregate analytics stats for a given time window
  */
-function analytics_get_stats(string $range = '30d'): array {
+function analytics_get_stats(string $range = '30d', ?string $filterDate = null): array {
     $dir = analytics_dir();
     $now = time();
     $days = match($range) {
@@ -223,6 +223,9 @@ function analytics_get_stats(string $range = '30d'): array {
         default => 30,
     };
     $cutoff = $days >= 3650 ? 0 : strtotime("-{$days} days", strtotime('today'));
+    if ($filterDate !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDate)) {
+        $filterDate = null;
+    }
 
     $totalViews = 0;
     $visitors = [];
@@ -231,9 +234,13 @@ function analytics_get_stats(string $range = '30d'): array {
     $pathCounts = [];
     $pathVisitors = [];
     $pathDepths = [];
+    $pathDwells = [];
+    $pathLastSeen = [];
     $referrers = [];
     $devices = ['desktop' => 0, 'mobile' => 0, 'tablet' => 0];
     $browsers = [];
+    $oses = [];
+    $recentViews = [];
     $totalDepth = 0;
     $depthCount = 0;
     $totalDwell = 0;
@@ -271,18 +278,25 @@ function analytics_get_stats(string $range = '30d'): array {
             $vis  = $ev['visitor'] ?? '';
 
             if ($type === 'view') {
-                $totalViews++;
-                $visitors[$vis] = true;
-
                 if (!isset($dailyViews[$date])) $dailyViews[$date] = 0;
                 $dailyViews[$date]++;
 
                 if (!isset($dailyVisitors[$date])) $dailyVisitors[$date] = [];
                 $dailyVisitors[$date][$vis] = true;
 
+                if ($filterDate !== null && $date !== $filterDate) {
+                    continue;
+                }
+
+                $totalViews++;
+                $visitors[$vis] = true;
+
                 $pathCounts[$path] = ($pathCounts[$path] ?? 0) + 1;
                 if (!isset($pathVisitors[$path])) $pathVisitors[$path] = [];
                 $pathVisitors[$path][$vis] = true;
+                if (!isset($pathLastSeen[$path]) || $ts > $pathLastSeen[$path]) {
+                    $pathLastSeen[$path] = $ts;
+                }
 
                 $ref = $ev['ref'] ?? '';
                 if ($ref !== '') {
@@ -296,7 +310,24 @@ function analytics_get_stats(string $range = '30d'): array {
                 $br = $ev['browser'] ?? 'Otro';
                 $browsers[$br] = ($browsers[$br] ?? 0) + 1;
 
+                $os = $ev['os'] ?? 'Otro';
+                $oses[$os] = ($oses[$os] ?? 0) + 1;
+
+                $recentViews[] = [
+                    'ts'      => $ts,
+                    'date'    => $date,
+                    'path'    => $path,
+                    'ref'     => $ref,
+                    'device'  => $dev,
+                    'os'      => $os,
+                    'browser' => $br,
+                ];
+
             } elseif ($type === 'scroll') {
+                if ($filterDate !== null && $date !== $filterDate) {
+                    continue;
+                }
+
                 $depth = (int)($ev['depth'] ?? 0);
                 $dwell = (int)($ev['dwell'] ?? 0);
 
@@ -311,36 +342,50 @@ function analytics_get_stats(string $range = '30d'): array {
                 if ($dwell > 0) {
                     $totalDwell += $dwell;
                     $dwellCount++;
+                    if (!isset($pathDwells[$path])) $pathDwells[$path] = ['sum' => 0, 'count' => 0];
+                    $pathDwells[$path]['sum'] += $dwell;
+                    $pathDwells[$path]['count']++;
                 }
             }
         }
         fclose($handle);
     }
 
-    // Top paths sorting
+    // Top paths sorting (up to 100 entries)
     arsort($pathCounts);
     $topPaths = [];
     $i = 0;
     foreach ($pathCounts as $p => $count) {
-        if ($i++ >= 15) break;
+        if ($i++ >= 100) break;
         $pAvgDepth = 0;
         if (!empty($pathDepths[$p]['count'])) {
             $pAvgDepth = round($pathDepths[$p]['sum'] / $pathDepths[$p]['count']);
         }
+        $pAvgDwell = 0;
+        if (!empty($pathDwells[$p]['count'])) {
+            $pAvgDwell = (int)round($pathDwells[$p]['sum'] / $pathDwells[$p]['count']);
+        }
         $topPaths[] = [
-            'path'     => $p,
-            'views'    => $count,
-            'uniques'  => count($pathVisitors[$p] ?? []),
-            'avg_depth'=> $pAvgDepth
+            'path'      => $p,
+            'views'     => $count,
+            'uniques'   => count($pathVisitors[$p] ?? []),
+            'avg_depth' => $pAvgDepth,
+            'avg_dwell' => $pAvgDwell,
+            'last_seen' => $pathLastSeen[$p] ?? 0,
         ];
     }
 
     // Top referrers sorting
     arsort($referrers);
-    $topReferrers = array_slice($referrers, 0, 10, true);
+    $topReferrers = array_slice($referrers, 0, 15, true);
 
-    // Browsers sorting
+    // Browsers & OS sorting
     arsort($browsers);
+    arsort($oses);
+
+    // Recent views (newest first, up to 40)
+    usort($recentViews, fn($a, $b) => $b['ts'] <=> $a['ts']);
+    $recentViews = array_slice($recentViews, 0, 40);
 
     // Daily series
     ksort($dailyViews);
@@ -356,16 +401,19 @@ function analytics_get_stats(string $range = '30d'): array {
     }
 
     return [
-        'range'         => $range,
-        'total_views'   => $totalViews,
+        'range'           => $range,
+        'filter_date'     => $filterDate,
+        'total_views'     => $totalViews,
         'unique_visitors' => count($visitors),
-        'avg_depth'     => $depthCount > 0 ? round($totalDepth / $depthCount) : 0,
-        'avg_dwell'     => $dwellCount > 0 ? round($totalDwell / $dwellCount) : 0,
-        'timeline'      => $timeline,
-        'top_paths'     => $topPaths,
-        'top_referrers' => $topReferrers,
-        'devices'       => $devices,
-        'browsers'      => $browsers,
+        'avg_depth'       => $depthCount > 0 ? round($totalDepth / $depthCount) : 0,
+        'avg_dwell'       => $dwellCount > 0 ? round($totalDwell / $dwellCount) : 0,
+        'timeline'        => $timeline,
+        'top_paths'       => $topPaths,
+        'top_referrers'   => $topReferrers,
+        'devices'         => $devices,
+        'browsers'        => $browsers,
+        'oses'            => $oses,
+        'recent_views'    => $recentViews,
     ];
 }
 

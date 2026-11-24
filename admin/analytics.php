@@ -8,7 +8,8 @@ require_once __DIR__ . '/layout.php';
 require_login();
 
 $range = in_array($_GET['range'] ?? '', ['today', '7d', '30d', 'all']) ? $_GET['range'] : '30d';
-$stats = analytics_get_stats($range);
+$filterDate = (isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'])) ? $_GET['date'] : null;
+$stats = analytics_get_stats($range, $filterDate);
 
 // Helper to format seconds into m:ss
 function format_dwell(int $sec): string {
@@ -19,19 +20,40 @@ function format_dwell(int $sec): string {
     return "{$s}s";
 }
 
-// Title resolver for paths
-function resolve_path_title(string $path): string {
-    if ($path === '/' || $path === '') return 'Página Principal';
-    if (str_starts_with($path, '/article/')) {
-        $slug = substr($path, 9);
-        $post = get_content('articles', $slug);
-        if ($post && !empty($post['title'])) return $post['title'];
-    } elseif (str_starts_with($path, '/page/')) {
-        $slug = substr($path, 6);
-        $page = get_content('pages', $slug);
-        if ($page && !empty($page['title'])) return $page['title'];
+// Title & kind resolver for paths
+function resolve_path_info(string $path): array {
+    $clean = trim($path, '/');
+    if ($clean === '') {
+        return ['title' => 'Página Principal', 'kind' => 'Inicio'];
     }
-    return $path;
+    if (str_starts_with($path, '/article/')) {
+        $slug = trim(substr($path, 9), '/');
+        $post = get_content('articles', $slug);
+        return ['title' => ($post && !empty($post['title'])) ? $post['title'] : $slug, 'kind' => 'Artículo'];
+    }
+    if (str_starts_with($path, '/page/')) {
+        $slug = trim(substr($path, 6), '/');
+        $page = get_content('pages', $slug);
+        return ['title' => ($page && !empty($page['title'])) ? $page['title'] : $slug, 'kind' => 'Página'];
+    }
+    if (str_starts_with($path, '/category/')) {
+        return ['title' => 'Categoría: ' . urldecode(trim(substr($path, 10), '/')), 'kind' => 'Categoría'];
+    }
+    if (str_starts_with($path, '/tag/')) {
+        return ['title' => 'Etiqueta: #' . urldecode(trim(substr($path, 5), '/')), 'kind' => 'Etiqueta'];
+    }
+    // Fallback: try direct slug lookup in articles or pages
+    if (!str_contains($clean, '/')) {
+        $post = get_content('articles', $clean);
+        if ($post && !empty($post['title'])) {
+            return ['title' => $post['title'], 'kind' => 'Artículo'];
+        }
+        $page = get_content('pages', $clean);
+        if ($page && !empty($page['title'])) {
+            return ['title' => $page['title'], 'kind' => 'Página'];
+        }
+    }
+    return ['title' => $path, 'kind' => 'Ruta'];
 }
 
 admin_header('Estadísticas', 'analytics');
@@ -100,15 +122,22 @@ admin_header('Estadísticas', 'analytics');
           <h3 class="card-title" style="margin-bottom:0.2rem;">Tendencia de Tráfico</h3>
           <span style="font-size:0.78rem; color:var(--muted);">Evolución de páginas vistas y lectores diarios</span>
         </div>
-        <div style="display:flex; gap:1rem; font-size:0.75rem; color:var(--muted);">
-          <span style="display:flex; align-items:center; gap:0.4rem;">
-            <span style="display:inline-block; width:10px; height:10px; background:var(--accent); border-radius:2px;"></span>
-            Vistas
-          </span>
-          <span style="display:flex; align-items:center; gap:0.4rem;">
-            <span style="display:inline-block; width:10px; height:10px; background:rgba(99,102,241,0.3); border-radius:2px;"></span>
-            Únicos
-          </span>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <?php if ($filterDate): ?>
+            <a href="?range=<?= urlencode($range) ?>" class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 10px;">
+              × Viendo solo <?= htmlspecialchars($filterDate) ?> (ver todo)
+            </a>
+          <?php endif; ?>
+          <div style="display:flex; gap:1rem; font-size:0.75rem; color:var(--muted);">
+            <span style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="display:inline-block; width:10px; height:10px; background:var(--accent); border-radius:2px;"></span>
+              Vistas
+            </span>
+            <span style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="display:inline-block; width:10px; height:10px; background:rgba(99,102,241,0.3); border-radius:2px;"></span>
+              Únicos
+            </span>
+          </div>
         </div>
       </div>
 
@@ -120,7 +149,7 @@ admin_header('Estadísticas', 'analytics');
       }
       ?>
 
-      <?php if (empty($timeline) || $stats['total_views'] === 0): ?>
+      <?php if (empty($timeline)): ?>
         <div style="padding:3rem 1rem; text-align:center; color:var(--muted);">
           <div style="font-size:2rem; margin-bottom:0.5rem; opacity:0.5;">📈</div>
           <div style="font-size:0.95rem; font-weight:600; color:var(--text);">Aún no hay visitas registradas en este período</div>
@@ -131,18 +160,22 @@ admin_header('Estadísticas', 'analytics');
           <?php foreach ($timeline as $item): 
             $viewPct = round(($item['views'] / $maxVal) * 100);
             $uniqPct = round(($item['uniques'] / $maxVal) * 100);
+            $isSelected = ($filterDate === $item['date']);
+            $barUrl = $isSelected ? ('?range=' . urlencode($range)) : ('?range=' . urlencode($range) . '&date=' . urlencode($item['date']));
           ?>
-            <div style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; group; position:relative;"
-                 title="<?= htmlspecialchars($item['date']) ?>: <?= $item['views'] ?> vistas, <?= $item['uniques'] ?> únicos">
+            <a href="<?= htmlspecialchars($barUrl) ?>"
+               style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; position:relative; text-decoration:none; border-radius:4px; <?= $isSelected ? 'background:rgba(99,102,241,0.14); outline:1px solid var(--accent);' : '' ?>"
+               title="<?= htmlspecialchars($item['date']) ?>: <?= $item['views'] ?> vistas, <?= $item['uniques'] ?> únicos (clic para filtrar este día)">
               <div style="width:100%; max-width:24px; display:flex; gap:2px; align-items:flex-end; height:100%;">
                 <div style="flex:1; background:var(--accent); height:<?= max(4, $viewPct) ?>%; border-radius:3px 3px 0 0; transition:height 0.2s;"></div>
                 <div style="flex:1; background:rgba(99,102,241,0.3); height:<?= max(2, $uniqPct) ?>%; border-radius:3px 3px 0 0; transition:height 0.2s;"></div>
               </div>
-            </div>
+            </a>
           <?php endforeach; ?>
         </div>
         <div style="display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.7rem; color:var(--muted); font-family:var(--font-mono);">
           <span><?= htmlspecialchars($timeline[0]['date'] ?? '') ?></span>
+          <span>Haz clic en cualquier barra para filtrar por día</span>
           <span><?= htmlspecialchars(end($timeline)['date'] ?? '') ?></span>
         </div>
       <?php endif; ?>
@@ -154,8 +187,8 @@ admin_header('Estadísticas', 'analytics');
       <div class="card">
         <div class="card-header">
           <div>
-            <h3 class="card-title">Páginas Más Vistas</h3>
-            <span style="font-size:0.75rem; color:var(--muted);">Artículos con mayor lectura y retención</span>
+            <h3 class="card-title">Artículos y Páginas Visitadas</h3>
+            <span style="font-size:0.75rem; color:var(--muted);"><?= $filterDate ? 'Detalle del día ' . htmlspecialchars($filterDate) : 'Desglose por artículo con lectura, tiempo y última visita' ?></span>
           </div>
         </div>
         <?php if (empty($stats['top_paths'])): ?>
@@ -163,29 +196,38 @@ admin_header('Estadísticas', 'analytics');
             Sin datos de páginas aún
           </div>
         <?php else: ?>
+          <div style="max-height:460px; overflow-y:auto;">
           <table class="table">
             <thead>
               <tr>
-                <th>Página</th>
+                <th>Artículo / Página</th>
                 <th style="text-align:right;">Vistas</th>
+                <th style="text-align:right;">Tiempo</th>
                 <th style="text-align:right;">Scroll</th>
               </tr>
             </thead>
             <tbody>
               <?php foreach ($stats['top_paths'] as $row): 
-                $title = resolve_path_title($row['path']);
+                $info = resolve_path_info($row['path']);
+                $publicHref = rtrim(base_url(), '/') . $row['path'];
               ?>
               <tr>
                 <td>
-                  <div style="font-weight:600; color:var(--text); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <?= htmlspecialchars($title) ?>
+                  <div style="display:flex; align-items:center; gap:0.4rem; max-width:300px;">
+                    <span class="badge" style="background:var(--bg3); border:1px solid var(--border); color:var(--muted); font-size:0.65rem; flex-shrink:0;"><?= htmlspecialchars($info['kind']) ?></span>
+                    <a href="<?= htmlspecialchars($publicHref) ?>" target="_blank" rel="noopener" style="font-weight:600; color:var(--text); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="<?= htmlspecialchars($info['title']) ?>">
+                      <?= htmlspecialchars($info['title']) ?> ↗
+                    </a>
                   </div>
                   <div style="font-size:0.72rem; color:var(--muted); font-family:var(--font-mono);">
-                    <?= htmlspecialchars($row['path']) ?> · <?= $row['uniques'] ?> únicos
+                    <?= htmlspecialchars($row['path']) ?> · <?= $row['uniques'] ?> únicos<?= !empty($row['last_seen']) ? ' · ' . date('d/m H:i', $row['last_seen']) : '' ?>
                   </div>
                 </td>
                 <td style="text-align:right; font-weight:700; font-family:var(--font-mono); color:var(--text);">
                   <?= number_format($row['views']) ?>
+                </td>
+                <td style="text-align:right; font-family:var(--font-mono); font-size:0.8rem; color:var(--text2);">
+                  <?= format_dwell((int)($row['avg_dwell'] ?? 0)) ?>
                 </td>
                 <td style="text-align:right;">
                   <span class="badge" style="background:rgba(99,102,241,0.12); color:var(--accent); font-family:var(--font-mono);">
@@ -196,6 +238,7 @@ admin_header('Estadísticas', 'analytics');
               <?php endforeach; ?>
             </tbody>
           </table>
+          </div>
         <?php endif; ?>
       </div>
 
@@ -269,6 +312,70 @@ admin_header('Estadísticas', 'analytics');
               <?= htmlspecialchars($br) ?>: <strong><?= $bCount ?></strong>
             </span>
           <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($stats['oses'])): ?>
+        <div style="display:flex; flex-wrap:wrap; gap:0.6rem; margin-top:0.75rem; border-top:1px solid var(--border); padding-top:0.8rem;">
+          <span style="font-size:0.75rem; color:var(--muted); align-self:center;">Sistemas:</span>
+          <?php foreach ($stats['oses'] as $osName => $osCount): ?>
+            <span class="badge" style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); font-size:0.75rem;">
+              <?= htmlspecialchars($osName) ?>: <strong><?= $osCount ?></strong>
+            </span>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Recent Visits Log -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Actividad Reciente</h3>
+          <span style="font-size:0.75rem; color:var(--muted);">Últimas visitas registradas (anónimas, sin IP)</span>
+        </div>
+      </div>
+      <?php if (empty($stats['recent_views'])): ?>
+        <div style="padding:2rem 1rem; text-align:center; color:var(--muted); font-size:0.85rem;">
+          Sin visitas recientes en este filtro
+        </div>
+      <?php else: ?>
+        <div style="max-height:380px; overflow-y:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Fecha / Hora</th>
+                <th>Artículo / Ruta</th>
+                <th>Origen</th>
+                <th>Entorno</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($stats['recent_views'] as $rv):
+                $rvInfo = resolve_path_info($rv['path']);
+              ?>
+              <tr>
+                <td style="font-family:var(--font-mono); font-size:0.78rem; color:var(--muted); white-space:nowrap;">
+                  <?= date('Y-m-d H:i', (int)$rv['ts']) ?>
+                </td>
+                <td>
+                  <div style="font-weight:600; color:var(--text); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <?= htmlspecialchars($rvInfo['title']) ?>
+                  </div>
+                  <div style="font-size:0.7rem; color:var(--muted); font-family:var(--font-mono);">
+                    <?= htmlspecialchars($rv['path']) ?>
+                  </div>
+                </td>
+                <td style="font-size:0.8rem; color:var(--text2);">
+                  <?= $rv['ref'] !== '' ? htmlspecialchars($rv['ref']) : '<span style="color:var(--muted);">Directo</span>' ?>
+                </td>
+                <td style="font-size:0.75rem; color:var(--muted); white-space:nowrap;">
+                  <?= htmlspecialchars($rv['device']) ?> · <?= htmlspecialchars($rv['os']) ?> · <?= htmlspecialchars($rv['browser']) ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
       <?php endif; ?>
     </div>
