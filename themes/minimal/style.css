@@ -796,6 +796,47 @@ button {
   margin: 3rem 0;
 }
 
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+}
+
+.prose th,
+.prose td {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg-subtle, rgba(128, 128, 128, 0.08));
+}
+
+.prose tr:hover td {
+  background: var(--bg-subtle, rgba(128, 128, 128, 0.05));
+}
+
+@media (max-width: 768px) {
+  .prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prose th,
+  .prose td {
+    min-width: 110px;
+  }
+}
+
 .prose a {
   color: var(--accent);
   text-decoration: underline;

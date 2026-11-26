@@ -225,10 +225,15 @@ $article_mastodon_url = $post['mastodon_url'] ?? '';
 .prose li { margin-bottom: 0.35rem; }
 .prose img { max-width: 100%; border-radius: 3px; margin: 1.5rem 0; display: block; }
 .prose hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
-.prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
-.prose th { background: var(--header-bg); color: #fff; padding: 0.5rem 0.75rem; text-align: left; font-family: var(--font); font-size: 0.78rem; text-transform: uppercase; }
-.prose td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
-.prose tr:hover td { background: #f9f9f9; }
+.prose { min-width: 0; max-width: 100%; overflow-wrap: break-word; }
+.prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; border: 1px solid var(--border); }
+.prose th { background: var(--surface2, var(--bg, rgba(128, 128, 128, 0.12))); color: var(--text); padding: 0.6rem 0.85rem; text-align: left; font-family: var(--font); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.prose td { padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.prose tr:hover td { background: rgba(128, 128, 128, 0.06); }
+@media (max-width: 768px) {
+  .prose table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .prose th, .prose td { min-width: 110px; }
+}
 
 /* YouTube embed */
 .yt-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; border-radius: 4px; }

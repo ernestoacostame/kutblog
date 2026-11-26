@@ -827,17 +827,25 @@ button, input {
 }
 
 /* Tables */
+.prose {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
 .prose table {
   width: 100%;
   border-collapse: collapse;
   margin: 2rem 0;
   font-size: 0.95rem;
+  border: 1px solid var(--border);
 }
 
 .prose th, .prose td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  border: 1px solid var(--border);
 }
 
 .prose th {
@@ -848,6 +856,20 @@ button, input {
 
 .prose tr:hover td {
   background: var(--bg-subtle);
+}
+
+@media (max-width: 768px) {
+  .prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prose th,
+  .prose td {
+    min-width: 110px;
+  }
 }
 
 /* Images & Figures */
