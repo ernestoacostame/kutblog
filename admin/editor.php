@@ -3956,10 +3956,106 @@ const htmlToolbar  = document.getElementById('html-toolbar');
     if (TextAlign) extensions.push(TextAlign);
     if (GalleryNode) extensions.push(GalleryNode);
 
+    if (Node) {
+      const TableNode = Node.create({
+        name: 'table',
+        group: 'block',
+        content: 'tableRow+',
+        tableRole: 'table',
+        isolating: true,
+        parseHTML() {
+          return [{ tag: 'table' }];
+        },
+        renderHTML() {
+          return ['table', { style: 'width:100%; border-collapse:collapse; margin:1.25rem 0; border:1px solid var(--border);' }, ['tbody', 0]];
+        }
+      });
+
+      const TableRowNode = Node.create({
+        name: 'tableRow',
+        content: '(tableCell | tableHeader)+',
+        tableRole: 'row',
+        parseHTML() {
+          return [{ tag: 'tr' }];
+        },
+        renderHTML() {
+          return ['tr', 0];
+        }
+      });
+
+      const TableHeaderNode = Node.create({
+        name: 'tableHeader',
+        content: 'block+',
+        tableRole: 'header_cell',
+        isolating: true,
+        addAttributes() {
+          return {
+            colspan: { default: 1, parseHTML: el => parseInt(el.getAttribute('colspan') || '1', 10) || 1, renderHTML: attrs => attrs.colspan > 1 ? { colspan: attrs.colspan } : {} },
+            rowspan: { default: 1, parseHTML: el => parseInt(el.getAttribute('rowspan') || '1', 10) || 1, renderHTML: attrs => attrs.rowspan > 1 ? { rowspan: attrs.rowspan } : {} }
+          };
+        },
+        parseHTML() {
+          return [{ tag: 'th' }];
+        },
+        renderHTML({ HTMLAttributes }) {
+          return ['th', Object.assign({}, HTMLAttributes, { style: 'border:1px solid var(--border); padding:8px 12px; text-align:left; background:var(--bg3); font-weight:600;' }), 0];
+        }
+      });
+
+      const TableCellNode = Node.create({
+        name: 'tableCell',
+        content: 'block+',
+        tableRole: 'cell',
+        isolating: true,
+        addAttributes() {
+          return {
+            colspan: { default: 1, parseHTML: el => parseInt(el.getAttribute('colspan') || '1', 10) || 1, renderHTML: attrs => attrs.colspan > 1 ? { colspan: attrs.colspan } : {} },
+            rowspan: { default: 1, parseHTML: el => parseInt(el.getAttribute('rowspan') || '1', 10) || 1, renderHTML: attrs => attrs.rowspan > 1 ? { rowspan: attrs.rowspan } : {} }
+          };
+        },
+        parseHTML() {
+          return [{ tag: 'td' }];
+        },
+        renderHTML({ HTMLAttributes }) {
+          return ['td', Object.assign({}, HTMLAttributes, { style: 'border:1px solid var(--border); padding:8px 12px;' }), 0];
+        }
+      });
+
+      extensions.push(TableNode, TableRowNode, TableHeaderNode, TableCellNode);
+    }
+
     window.pmEditor = new Editor({
       element: pmMount,
       extensions: extensions,
       content: originalHtml || '<p></p>',
+      editorProps: {
+        handlePaste(view, event) {
+          const cd = event.clipboardData;
+          if (!cd) return false;
+          const html = cd.getData('text/html') || '';
+          if (/<table[\s>]/i.test(html)) {
+            return false; // Let ProseMirror parse the HTML <table> natively using TableNode
+          }
+          const plain = (cd.getData('text/plain') || '').trim();
+          const lines = plain.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          if (lines.length >= 2 && /^\|.*\|$/.test(lines[0]) && /^\|[\s:|-]+\|$/.test(lines[1])) {
+            const parseRow = (line) => line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+            const headers = parseRow(lines[0]);
+            const rows = lines.slice(2).filter(l => /^\|.*\|$/.test(l)).map(parseRow);
+            const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            let tbl = '<table><thead><tr>' + headers.map(h => `<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>';
+            rows.forEach(r => {
+              tbl += '<tr>' + headers.map((_, i) => `<td>${esc(r[i] ?? '')}</td>`).join('') + '</tr>';
+            });
+            tbl += '</tbody></table><p></p>';
+            if (window.pmEditor) {
+              window.pmEditor.chain().focus().insertContent(tbl).run();
+              return true;
+            }
+          }
+          return false;
+        }
+      },
       onUpdate({ editor }) {
         const html = editor.getHTML();
         if (contentInput) contentInput.value = html;
