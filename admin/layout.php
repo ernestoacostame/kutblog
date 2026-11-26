@@ -213,7 +213,7 @@ body.sidebar-hidden .main { margin-left: 0; }
   border-bottom: 1px solid var(--border); padding: 0 2rem;
   display: flex; align-items: center; justify-content: space-between;
   background: var(--sidebar); position: sticky; top: 0; z-index: 50;
-  height: var(--topbar-h); gap: 1.25rem;
+  height: var(--topbar-h); min-height: var(--topbar-h); flex-shrink: 0; gap: 1.25rem;
   backdrop-filter: blur(12px);
 }
 .topbar-left { display: flex; align-items: center; gap: 1rem; min-width: 0; }
