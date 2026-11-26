@@ -1057,8 +1057,9 @@ function kutpod_render_related_box($episodesOrSingle, array $cfg): string {
 // ── Inyección de Scripts y Metadatos en Header y Footer ────────────────────────
 function kutpod_theme_header(string $template = '', array $vars = []): void {
     $base = base_url();
+    $cssVer = @filemtime(__DIR__ . '/assets/kutpod-blog.css') ?: '1';
     echo "\n  <!-- KutPod Podcast Integration Styles -->\n";
-    echo "  <link rel=\"stylesheet\" href=\"{$base}/plugins/kutpod/assets/kutpod-blog.css\">\n";
+    echo "  <link rel=\"stylesheet\" href=\"{$base}/plugins/kutpod/assets/kutpod-blog.css?v={$cssVer}\">\n";
 
     // Si es un post con podcast, inyectar Schema.org PodcastEpisode y OpenGraph Audio
     $post = $vars['post'] ?? null;
@@ -1087,6 +1088,7 @@ function kutpod_theme_header(string $template = '', array $vars = []): void {
 
 function kutpod_theme_footer(string $template = '', array $vars = []): void {
     $base = base_url();
+    $jsVer = @filemtime(__DIR__ . '/assets/kutpod-blog.js') ?: '1';
     echo "\n  <!-- KutPod Interactive Reader Script -->\n";
-    echo "  <script src=\"{$base}/plugins/kutpod/assets/kutpod-blog.js\" defer></script>\n";
+    echo "  <script src=\"{$base}/plugins/kutpod/assets/kutpod-blog.js?v={$jsVer}\" defer></script>\n";
 }

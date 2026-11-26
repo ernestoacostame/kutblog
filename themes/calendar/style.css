@@ -976,9 +976,41 @@ button {
 }
 
 /* ── Prose ───────────────────────────────────────────────────────────────── */
+.calendar-article-col {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .calendar-prose {
   font-size: 1rem;
   line-height: 1.7;
+  color: var(--text);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.calendar-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+}
+
+.calendar-prose th,
+.calendar-prose td {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.calendar-prose thead th,
+.calendar-prose th {
+  background-color: var(--surface-2);
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -1325,6 +1357,29 @@ button {
   .calendar-two-columns {
     grid-template-columns: minmax(0, 1fr) 56px;
     gap: 0.65rem;
+  }
+
+  /* Dentro de un artículo en móvil, oculta el carril de calendario para dar todo el ancho al texto */
+  .calendar-two-columns.calendar-single-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .calendar-single-layout .calendar-timeline-aside {
+    display: none;
+  }
+
+  /* Tablas responsivas dentro del artículo sin desbordar la página */
+  .calendar-prose table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-prose th,
+  .calendar-prose td {
+    min-width: 110px;
   }
 
   /* Columna de posts compacta */

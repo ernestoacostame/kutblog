@@ -46,7 +46,7 @@ $date_full = format_date($ts, 'full');
 $recent_articles = function_exists('list_content') ? list_content('articles', true, 1, 6) : ['items' => []];
 ?>
 
-<div class="calendar-two-columns">
+<div class="calendar-two-columns calendar-single-layout">
   <!-- ── COLUMNA IZQUIERDA: Contenido del Artículo ──────────────────────── -->
   <article class="calendar-article-col" id="article-content-wrapper">
     <!-- Navegación superior -->

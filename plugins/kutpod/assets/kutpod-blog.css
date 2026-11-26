@@ -6,17 +6,30 @@
   --kp-accent: #ff5f7e;
   --kp-accent-rgb: 255, 95, 126;
   --kp-bg: var(--bg, #ffffff);
-  --kp-card-bg: var(--card-bg, rgba(255, 255, 255, 0.85));
+  --kp-card-bg: var(--surface, var(--card-bg, rgba(255, 255, 255, 0.85)));
   --kp-border: var(--border, rgba(0, 0, 0, 0.08));
   --kp-text: var(--text, #0f172a);
-  --kp-text-muted: var(--muted, #64748b);
+  --kp-text-muted: var(--text-muted, var(--muted, #64748b));
   --kp-hover: rgba(var(--kp-accent-rgb), 0.08);
 }
 
+[data-theme="dark"],
+.dark {
+  --kp-bg: var(--bg, #0c0d0e);
+  --kp-card-bg: var(--surface, var(--card-bg, rgba(15, 23, 42, 0.75)));
+  --kp-border: var(--border, rgba(255, 255, 255, 0.08));
+  --kp-text: var(--text, #f3f4f6);
+  --kp-text-muted: var(--text-muted, var(--muted, #9ca3af));
+  --kp-hover: rgba(var(--kp-accent-rgb), 0.15);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --kp-card-bg: var(--card-bg, rgba(15, 23, 42, 0.75));
+  :root:not([data-theme="light"]) {
+    --kp-bg: var(--bg, #0c0d0e);
+    --kp-card-bg: var(--surface, var(--card-bg, rgba(15, 23, 42, 0.75)));
     --kp-border: var(--border, rgba(255, 255, 255, 0.08));
+    --kp-text: var(--text, #f3f4f6);
+    --kp-text-muted: var(--text-muted, var(--muted, #9ca3af));
     --kp-hover: rgba(var(--kp-accent-rgb), 0.15);
   }
 }
@@ -190,6 +203,7 @@
   border-radius: 14px;
   border: 1px solid var(--kp-border);
   background: var(--kp-card-bg);
+  color: var(--kp-text);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
@@ -286,7 +300,7 @@
   gap: 12px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-2, rgba(128, 128, 128, 0.06));
   border: 1px solid var(--kp-border);
   transition: all 0.2s ease;
   cursor: pointer;
@@ -328,6 +342,8 @@
 .kutpod-playlist-item-cover {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  max-width: 40px;
   border-radius: 8px;
   object-fit: cover;
   flex-shrink: 0;
